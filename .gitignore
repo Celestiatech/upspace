@@ -1,0 +1,11 @@
+# Local configuration and credentials
+.env
+.env.local
+.env.*.local
+
+# Next.js build output
+.next/
+
+# Dependencies and TypeScript build cache
+node_modules/
+*.tsbuildinfo
