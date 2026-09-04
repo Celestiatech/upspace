@@ -47,19 +47,19 @@ export function CloudReveal() {
         }
         .cloud-reveal--clearing .cloud-reveal__base { opacity: 0; }
         .cloud-reveal__center {
-          display: none;
+          display: flex;
           position: absolute;
-          z-index: 3;
+          z-index: 10;
           inset: 0;
-          display: none;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          color: #172033;
+          color: #0f172a;
           font-size: 14px;
           font-weight: 700;
           letter-spacing: .02em;
-          transition: opacity 250ms ease;
+          transition: opacity 350ms ease;
+          pointer-events: none;
         }
         .cloud-reveal--clearing .cloud-reveal__center { opacity: 0; }
         .cloud-bank, .cloud-puff {

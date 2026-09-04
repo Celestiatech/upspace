@@ -11,6 +11,14 @@ interface InteriorOfficeProps {
   isDayMode?: boolean;
 }
 
+const SHARED_OFFICE_GEOMETRIES = {
+  deskTop: new THREE.BoxGeometry(1.1, 0.04, 0.55),
+  deskLeg: new THREE.BoxGeometry(0.04, 0.22, 0.48),
+  monitor: new THREE.BoxGeometry(0.36, 0.22, 0.02),
+  chairSeat: new THREE.BoxGeometry(0.32, 0.04, 0.32),
+  chairBack: new THREE.BoxGeometry(0.3, 0.3, 0.03),
+};
+
 export function InteriorOffice({
   width,
   depth,
@@ -68,25 +76,11 @@ export function InteriorOffice({
         />
       </mesh>
 
-      {/* 4. GLASS CONFERENCE ROOM PARTITION */}
-      <mesh position={[0, 0, -usableD * 0.18]}>
-        <boxGeometry args={[usableW * 0.55, height * 0.72, 0.04]} />
-        <meshPhysicalMaterial
-          color="#38bdf8"
-          transmission={0.85}
-          transparent
-          opacity={0.6}
-          roughness={0.1}
-          metalness={0.1}
-        />
-      </mesh>
-
-      {/* 5. WORKSTATION DESKS, MONITORS & CHAIRS (Visible when orbiting/zooming) */}
+      {/* 4. WORKSTATION DESKS, MONITORS & CHAIRS (Using shared geometries) */}
       {deskPositions.map((d, i) => (
         <group key={`desk-${i}`} position={[d.x, floorY + 0.22, d.z]} rotation={[0, d.rot, 0]}>
           {/* Desk Top */}
-          <mesh castShadow receiveShadow>
-            <boxGeometry args={[1.1, 0.04, 0.55]} />
+          <mesh geometry={SHARED_OFFICE_GEOMETRIES.deskTop} castShadow receiveShadow>
             <meshStandardMaterial
               color={isDayMode ? '#cbd5e1' : '#334155'}
               roughness={0.4}
@@ -96,26 +90,21 @@ export function InteriorOffice({
 
           {/* Desk Legs */}
           {[-0.48, 0.48].map((lx) => (
-            <mesh key={`leg-${lx}`} position={[lx, -0.11, 0]}>
-              <boxGeometry args={[0.04, 0.22, 0.48]} />
+            <mesh key={`leg-${lx}`} geometry={SHARED_OFFICE_GEOMETRIES.deskLeg} position={[lx, -0.11, 0]}>
               <meshStandardMaterial color="#0f172a" metalness={0.8} />
             </mesh>
           ))}
 
           {/* Dual Desktop Computer Monitors */}
           <group position={[0, 0.16, -0.14]}>
-            {/* Left Screen */}
-            <mesh position={[-0.22, 0, 0]} rotation={[0, 0.15, 0]}>
-              <boxGeometry args={[0.36, 0.22, 0.02]} />
+            <mesh geometry={SHARED_OFFICE_GEOMETRIES.monitor} position={[-0.22, 0, 0]} rotation={[0, 0.15, 0]}>
               <meshStandardMaterial
                 color="#020617"
                 emissive="#38bdf8"
                 emissiveIntensity={isSelected ? 1.5 : 0.8}
               />
             </mesh>
-            {/* Right Screen */}
-            <mesh position={[0.22, 0, 0]} rotation={[0, -0.15, 0]}>
-              <boxGeometry args={[0.36, 0.22, 0.02]} />
+            <mesh geometry={SHARED_OFFICE_GEOMETRIES.monitor} position={[0.22, 0, 0]} rotation={[0, -0.15, 0]}>
               <meshStandardMaterial
                 color="#020617"
                 emissive="#38bdf8"
@@ -126,18 +115,15 @@ export function InteriorOffice({
 
           {/* Office Ergonomic Task Chair */}
           <group position={[0, 0.08, 0.35]}>
-            <mesh position={[0, 0, 0]}>
-              <boxGeometry args={[0.32, 0.04, 0.32]} />
+            <mesh geometry={SHARED_OFFICE_GEOMETRIES.chairSeat} position={[0, 0, 0]}>
               <meshStandardMaterial color="#1e293b" />
             </mesh>
-            <mesh position={[0, 0.16, 0.14]}>
-              <boxGeometry args={[0.3, 0.3, 0.03]} />
+            <mesh geometry={SHARED_OFFICE_GEOMETRIES.chairBack} position={[0, 0.16, 0.14]}>
               <meshStandardMaterial color="#1e293b" />
             </mesh>
           </group>
         </group>
       ))}
-
     </group>
   );
 }

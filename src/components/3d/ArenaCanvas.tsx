@@ -70,7 +70,7 @@ export function ArenaCanvas({
         <fog attach="fog" args={[bgColor, 60, isDayMode ? 220 : 160]} />
         {!lowPower && <Sky sunPosition={[100, 20, 100]} turbidity={8} rayleigh={6} mieCoefficient={0.005} />}
 
-        <Suspense fallback={null}>
+        <Suspense fallback={<ScenePreloader />}>
           <ArenaScene
             arena={arena}
             floors={floors}

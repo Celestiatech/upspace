@@ -9,6 +9,7 @@ import { FloorMesh } from './FloorMesh';
 import { CityEnvironment } from './CityEnvironment';
 import { CelestialSky } from './CelestialSky';
 import { PlazaLife } from './PlazaLife';
+import { HeightLadderMarkers } from './HeightLadderMarkers';
 
 interface BuildingStructureProps {
   arena: Arena;
@@ -59,6 +60,15 @@ export function BuildingStructure({
       {/* 2. PLAZA ENVIRONMENT & PEDESTRIANS FOR REALISTIC HUMAN SCALE */}
       <CityEnvironment theme={isDayMode ? 'day' : 'night'} />
       <PlazaLife theme={isDayMode ? 'day' : 'night'} gazeHeight={roofY} />
+
+      {/* 2.5 WORLD LANDMARK 3D HEIGHT MARKERS & ELEVATION RULER */}
+      <HeightLadderMarkers
+        roofY={roofY}
+        floorsCount={floors.length}
+        floorHeight={floorHeight}
+        baseHeight={baseHeight}
+        isDayMode={isDayMode}
+      />
 
       {/* 2. GRAND HEADQUARTERS GROUND FLOOR - tall, imposing high-rise base */}
       <HeadquartersGroundFloor

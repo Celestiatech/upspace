@@ -26,7 +26,7 @@ interface PurchaseModalProps {
   floors: FloorData[];
   theme: ThemeMode;
   onClose: () => void;
-  onConfirm: (campaign: { title: string; bannerUrl: string; targetUrl: string }) => void;
+  onConfirm: (campaign: { title: string; bannerUrl: string; targetUrl: string; bidAmount: number; claimCode: string }) => void;
 }
 
 export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: PurchaseModalProps) {
@@ -52,6 +52,8 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
   const [adTitle, setAdTitle] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
+  const [bidAmount, setBidAmount] = useState(0);
+  const [claimCode, setClaimCode] = useState('');
 
   // Sync with real Supabase Auth session
   useEffect(() => {
@@ -91,6 +93,8 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
     setAdTitle(floor.brandTitle || '');
     setBannerUrl(floor.adBannerUrl || '');
     setTargetUrl(floor.targetUrl || '');
+    setBidAmount(floor.price);
+    setClaimCode('');
     setAuthError('');
     setOtpSent(false);
   }, [floor]);
@@ -98,6 +102,7 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
   if (!floor) return null;
 
   const displayNum = getDisplayFloorNumber(floor.floorNumber, floors.length);
+  const isOutbid = floor.status === 'sold';
 
   const handleSignOut = async () => {
     try {
@@ -273,7 +278,7 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
       <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 text-slate-100 animate-in zoom-in-95 duration-200 border border-slate-200/80 dark:border-white/10 shadow-2xl bg-white/95 dark:bg-[#0b1024]/95 backdrop-blur-2xl">
         
         {/* STEP 1: AUTHENTICATION (Show first if not logged in) */}
-        {!currentUser ? (
+        {false ? (
           <div className="space-y-6">
             {/* Modal Header */}
             <header className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
@@ -559,7 +564,10 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
               event.preventDefault();
               const title = adTitle.trim();
               if (!title) return;
-              onConfirm({ title, bannerUrl: bannerUrl.trim(), targetUrl: targetUrl.trim() });
+              if (!Number.isFinite(bidAmount) || bidAmount < floor.price) return;
+              const generatedCode = `UPS-${Math.random().toString(36).slice(2, 8).toUpperCase()}-${floor.floorNumber + 1}`;
+              setClaimCode(generatedCode);
+              onConfirm({ title, bannerUrl: bannerUrl.trim(), targetUrl: targetUrl.trim(), bidAmount, claimCode: generatedCode });
               setReserved(true);
             }}>
               {/* Header with User Info & Logout */}
@@ -570,10 +578,10 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                   </span>
                   <div>
                     <h2 className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-tight">
-                      Floor Mint &amp; Reserve
+                      {isOutbid ? 'Outbid &amp; Reserve' : 'Claim &amp; Reserve'}
                     </h2>
                     <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                      <span>Logged in as: <b className="text-slate-900 dark:text-white font-bold">{currentUser.email}</b></span>
+                      <span><b className="text-slate-900 dark:text-white font-bold">{currentUser?.email || 'Guest purchase'}</b></span>
                       <button
                         type="button"
                         onClick={handleSignOut}
@@ -599,6 +607,7 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                 <div className="h-6 w-px bg-slate-200 dark:bg-white/10" />
                 <div><span className="tech-label block">Format</span><span className="block max-w-[90px] truncate font-bold text-slate-800 dark:text-slate-200">{floor.dimensions}</span></div>
               </div>
+              {isOutbid && <p className="-mt-1 mb-3 rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs leading-relaxed text-orange-900">Your bid is 10% above the current floor value. It replaces the displayed campaign only after payment and campaign review.</p>}
 
               {/* Form & Live Billboard Preview */}
               <div className="grid gap-4 md:grid-cols-[1.08fr_.92fr]">
@@ -606,6 +615,11 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                   <div>
                     <label htmlFor="campaign-title" className="tech-label mb-1 block">Campaign title</label>
                     <input id="campaign-title" required value={adTitle} onChange={(event) => setAdTitle(event.target.value)} placeholder="e.g. Cyber Genesis" className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.055] px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/15" />
+                  </div>
+                  <div>
+                    <label htmlFor="bid-amount" className="tech-label mb-1 block">Your bid (₹)</label>
+                    <input id="bid-amount" type="number" min={floor.price} step="1" required value={bidAmount || ''} onChange={(event) => setBidAmount(Number(event.target.value))} className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.055] px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/15" />
+                    <p className="mt-1 text-[10px] text-slate-500">Minimum ₹{floor.price}; enter any higher amount.</p>
                   </div>
                   <div>
                     <label htmlFor="banner-url" className="tech-label mb-1 block">Texture image URL</label>
@@ -635,12 +649,12 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
 
               {/* Action Footer */}
               <footer className="mt-4 flex items-center justify-between border-t border-slate-200 dark:border-white/10 pt-3.5">
-                <div><span className="tech-label block">Total due</span><span className="text-lg font-black text-cyan-600 dark:text-cyan-400">₹{floor.price}</span></div>
+                <div><span className="tech-label block">{isOutbid ? 'Your outbid' : 'Total due'}</span><span className="text-lg font-black text-cyan-600 dark:text-cyan-400">₹{bidAmount || floor.price}</span></div>
                 <div className="flex gap-2">
                   <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 dark:border-white/10 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-white/[0.07]">Cancel</button>
                   <button type="submit" className="relative overflow-hidden inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 via-indigo-600 to-cyan-500 bg-[length:200%_auto] hover:bg-right px-4 py-2 text-xs font-black text-white shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02] active:scale-[0.98]">
                     <Sparkles className="h-4 w-4 text-cyan-200" />
-                    <span>Mint &amp; Reserve</span>
+                    <span>{isOutbid ? 'Place outbid' : 'Claim floor'}</span>
                   </button>
                 </div>
               </footer>
@@ -653,8 +667,9 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
               </div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white">Campaign Minted Successfully!</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                Floor {displayNum} is now live in the 3D tower under <b className="text-slate-800 dark:text-slate-200">{currentUser.email}</b>.
+                Floor {displayNum} is live. Save this claim code and enter it in your profile after you create or sign into an account.
               </p>
+              <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 font-mono text-sm font-black tracking-wider text-cyan-800">{claimCode}</div>
               <button onClick={onClose} className="primary-action px-6 py-2.5 text-xs font-black">
                 Back to UpSpace 3D
               </button>
@@ -665,6 +680,3 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
     </div>
   );
 }
-
-
-

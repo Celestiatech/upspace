@@ -50,6 +50,7 @@ export function UserProfileModal({
   const user = useAppStore((state) => state.user);
   const updateProfile = useAppStore((state) => state.updateProfile);
   const logout = useAppStore((state) => state.logout);
+  const addFloor = useAppStore((state) => state.addFloor);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
@@ -57,6 +58,8 @@ export function UserProfileModal({
   const [editAvatarUrl, setEditAvatarUrl] = useState(user?.avatarUrl || '');
   const [copiedId, setCopiedId] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [claimCode, setClaimCode] = useState('');
+  const [claimMessage, setClaimMessage] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,6 +126,18 @@ export function UserProfileModal({
     }
     logout();
     onClose();
+  };
+
+  const handleClaimPurchase = () => {
+    const code = claimCode.trim().toUpperCase();
+    const floor = floors.find((item) => item.claimCode === code && item.ownerName === 'Unclaimed purchase');
+    if (!floor) {
+      setClaimMessage('That code is invalid or has already been claimed.');
+      return;
+    }
+    addFloor({ ...floor, ownerName: user.name, claimCode: undefined });
+    setClaimCode('');
+    setClaimMessage(`Floor ${getDisplayFloorNumber(floor.floorNumber, floors.length)} is now linked to your profile.`);
   };
 
   const isDay = theme === 'day';
@@ -373,6 +388,14 @@ export function UserProfileModal({
             </div>
           </form>
         )}
+
+        {/* Telemetry Stats Grid (borderless) */}
+        <section className="my-4 rounded-2xl border border-cyan-200/70 bg-cyan-50/70 p-4 dark:border-cyan-400/15 dark:bg-cyan-500/5">
+          <p className="text-xs font-black text-cyan-800 dark:text-cyan-200">Claim a guest purchase</p>
+          <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400">Enter the UPS claim code you received after checkout to connect that floor to this profile.</p>
+          <div className="mt-3 flex gap-2"><input value={claimCode} onChange={(event) => setClaimCode(event.target.value)} placeholder="UPS-ABC123-4" className="min-w-0 flex-1 rounded-xl border border-cyan-200 bg-white px-3 py-2 text-xs font-mono font-bold text-slate-900 outline-none focus:border-cyan-500 dark:border-white/10 dark:bg-slate-900 dark:text-white" /><button onClick={handleClaimPurchase} className="rounded-xl bg-cyan-600 px-3 py-2 text-xs font-black text-white hover:bg-cyan-500">Claim</button></div>
+          {claimMessage && <p className="mt-2 text-[11px] font-medium text-cyan-700 dark:text-cyan-300">{claimMessage}</p>}
+        </section>
 
         {/* Telemetry Stats Grid (borderless) */}
         <div className="grid grid-cols-3 gap-3 my-4">

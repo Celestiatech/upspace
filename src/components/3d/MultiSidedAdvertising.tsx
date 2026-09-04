@@ -7,14 +7,11 @@ import { FloorData, getDisplayFloorNumber } from '@/types/floor';
 
 const SIDE_PILL_BG = ['#22c9b8', '#7cc0f2', '#a8e063', '#ff9b7d', '#8fbfe0', '#ffd580'];
 
-function drawSideSignCanvas(floor: FloorData, index: number, totalFloors: number): HTMLCanvasElement {
-  const w = 1024;
-  const h = 248;
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return canvas;
+import { floorTexturePool } from '@/utils/threeMemory';
+
+function drawSideSignCanvas(floor: FloorData, index: number, totalFloors: number, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
+  const w = canvas.width; // 512
+  const h = canvas.height; // 128
 
   const bg = floor.bannerColor || SIDE_PILL_BG[index % SIDE_PILL_BG.length];
 
@@ -31,8 +28,8 @@ function drawSideSignCanvas(floor: FloorData, index: number, totalFloors: number
   ctx.fillRect(0, 0, w, h);
 
   // 3. Square company logo icon on the left
-  const logoX = 46;
-  const logoSize = 132;
+  const logoX = 24;
+  const logoSize = 68;
   const logoY = h / 2 - logoSize / 2;
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
   ctx.fillRect(logoX, logoY, logoSize, logoSize);
@@ -40,51 +37,49 @@ function drawSideSignCanvas(floor: FloorData, index: number, totalFloors: number
   const brand = floor.brandTitle || (floor.status === 'available' ? 'AVAILABLE' : 'YOUR BRAND');
   const initial = (brand.charAt(0) || 'U').toUpperCase();
   ctx.fillStyle = bg;
-  ctx.font = '800 84px "Segoe UI", Arial, sans-serif';
+  ctx.font = '800 42px "Segoe UI", Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(initial, logoX + logoSize / 2, logoY + logoSize / 2 + 6);
+  ctx.fillText(initial, logoX + logoSize / 2, logoY + logoSize / 2 + 3);
 
-  // 4. Domain / brand name (dark, high-contrast)
+  // 4. Domain / brand name
   ctx.fillStyle = '#111827';
-  ctx.font = '800 84px "Segoe UI", Arial, sans-serif';
+  ctx.font = '800 42px "Segoe UI", Arial, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  const brandX = logoX + logoSize + 38;
-  const brandY = h / 2 - 28;
-  ctx.fillText(brand.length > 16 ? brand.slice(0, 16) : brand, brandX, brandY, 560);
+  const brandX = logoX + logoSize + 20;
+  const brandY = h / 2 - 14;
+  ctx.fillText(brand.length > 16 ? brand.slice(0, 16) : brand, brandX, brandY, 280);
 
   // 5. Category sub-line
   ctx.fillStyle = 'rgba(17,24,39,0.78)';
-  ctx.font = '600 44px "Segoe UI", Arial, sans-serif';
-  ctx.fillText(floor.category || (floor.status === 'available' ? 'Prime Virtual Commercial Space' : 'High-Impact Brand Presence'), brandX, h / 2 + 46, 560);
+  ctx.font = '600 22px "Segoe UI", Arial, sans-serif';
+  ctx.fillText(floor.category || (floor.status === 'available' ? 'Prime Commercial Space' : 'Brand Presence'), brandX, h / 2 + 24, 280);
 
   // 6. Floor badge overlay (bottom-right)
   const displayNum = getDisplayFloorNumber(floor.floorNumber, totalFloors);
   const badge = `#${displayNum}`;
-  const badgeW = 148;
-  const badgeH = 66;
-  const bx = w - 250;
-  const by = h - 88;
+  const badgeW = 76;
+  const badgeH = 34;
+  const bx = w - 128;
+  const by = h - 45;
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
   ctx.fillRect(bx - badgeW / 2, by - badgeH / 2, badgeW, badgeH);
-  ctx.lineWidth = 5;
+  ctx.lineWidth = 2.5;
   ctx.strokeStyle = 'rgba(30,41,59,0.75)';
   ctx.stroke();
   ctx.fillStyle = '#111827';
-  ctx.font = '800 50px "Segoe UI", Arial, sans-serif';
+  ctx.font = '800 26px "Segoe UI", Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(badge, bx + 6, by + 3);
+  ctx.fillText(badge, bx + 3, by + 1);
 
-  // 7. Bid amount tag (right edge)
+  // 7. Bid amount tag
   const price = `₹${floor.price}`;
   ctx.fillStyle = '#111827';
-  ctx.font = '800 58px "Segoe UI", Arial, sans-serif';
+  ctx.font = '800 30px "Segoe UI", Arial, sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText(price, w - 74, h / 2 - 4);
-
-  return canvas;
+  ctx.fillText(price, w - 38, h / 2 - 2);
 }
 
 interface MultiSidedAdvertisingProps {
@@ -118,19 +113,22 @@ export function MultiSidedAdvertising({
   const activeColor = isSelected ? '#ffea00' : isHovered ? '#38bdf8' : brandColor;
 
   // Determine advertising style based on floor data
-  const styleType = floor.floorNumber % 3; // 0: 360° Panoramic Wrap, 1: 4-Sided Multi-Screen Suite, 2: Dual Split & Corner Ticker
+  const styleType = floor.floorNumber % 3;
 
-  // Dynamic HTML5 canvas texture for the side wrap-around sign plates
+  // Dynamic HTML5 canvas texture for the side wrap-around sign plates via shared pool
+  const sideKey = `side-${floor.id}-${floor.brandTitle}-${floor.price}`;
   const sideTexture = useMemo(() => {
     const index = Math.floor(floor.floorNumber) % SIDE_PILL_BG.length;
-    const canvas = drawSideSignCanvas(floor, index, totalFloors);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 2;
-    return texture;
-  }, [floor]);
+    return floorTexturePool.getOrCreate(sideKey, (canvas, ctx) => {
+      drawSideSignCanvas(floor, index, totalFloors, canvas, ctx);
+    });
+  }, [floor, totalFloors, sideKey]);
 
-  useEffect(() => () => sideTexture.dispose(), [sideTexture]);
+  useEffect(() => {
+    return () => {
+      floorTexturePool.release(sideKey);
+    };
+  }, [sideKey]);
 
   const signWidthFront = width * 0.85;
   const signWidthSide = signWidthFront;

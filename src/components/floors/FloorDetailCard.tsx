@@ -26,6 +26,7 @@ export function FloorDetailCard({
 
   const isDay = theme === 'day';
   const isAvailable = floor.status === 'available';
+  const nextBid = Math.ceil(floor.price * 1.1);
   const displayNum = getDisplayFloorNumber(floor.floorNumber, allFloors.length);
 
   const currentIndex = allFloors.findIndex((f) => f.id === floor.id);
@@ -136,10 +137,10 @@ export function FloorDetailCard({
 
                 <div className="p-3.5 rounded-xl bg-black/5 dark:bg-white/[0.045] border border-black/5 dark:border-white/[0.08]">
                   <div className="tech-label">
-                    FLOOR VALUE
+                    NEXT BID
                   </div>
                   <div className="text-sm font-extrabold font-mono mt-0.5">
-                    ₹{floor.price}
+                    ₹{nextBid}
                   </div>
                 </div>
               </div>
@@ -156,16 +157,15 @@ export function FloorDetailCard({
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  alert(
-                    `Commercial Space Details for Floor ${displayNum}:\n- Business: ${floor.brandTitle}\n- Owner: ${floor.ownerName}\n- Exposure: ${floor.impressionsPerDay}\n- Format: ${floor.dimensions}\n\nVisitor showroom console connects in Phase 2!`
-                  );
-                }}
-                className="w-full py-3 px-4 rounded-xl bg-black/5 dark:bg-white/[0.07] hover:bg-black/10 dark:hover:bg-white/[0.12] text-sm font-semibold border border-black/10 dark:border-white/10 flex items-center justify-center gap-2 transition hover:scale-[1.01] active:scale-[0.99]"
-              >
-                <ExternalLink className="w-4 h-4 text-cyan-500" />
-                <span>View tenant details</span>
+              {floor.targetUrl && (
+                <a href={floor.targetUrl} target="_blank" rel="noreferrer" className="w-full py-3 px-4 rounded-xl bg-black/5 dark:bg-white/[0.07] hover:bg-black/10 dark:hover:bg-white/[0.12] text-sm font-semibold border border-black/10 dark:border-white/10 flex items-center justify-center gap-2 transition hover:scale-[1.01] active:scale-[0.99]">
+                  <ExternalLink className="w-4 h-4 text-cyan-500" />
+                  <span>Visit advertiser</span>
+                </a>
+              )}
+              <button onClick={() => onOpenPurchase(floor)} className="primary-action w-full">
+                <Sparkles className="w-4 h-4" />
+                <span>Outbid current owner for ₹{nextBid}</span>
               </button>
             </div>
           )}

@@ -7,6 +7,7 @@ import { ArenaCanvas } from '@/components/3d/ArenaCanvas';
 import { GameHUD } from '@/components/ui/GameHUD';
 import { PurchaseModal } from '@/components/ui/PurchaseModal';
 import { CloudReveal } from '@/components/ui/CloudReveal';
+import { FloorDetailCard } from '@/components/floors/FloorDetailCard';
 import { useAppStore } from '@/store/useAppStore';
 
 export default function AppScreen() {
@@ -27,6 +28,7 @@ export default function AppScreen() {
 
   const [purchaseFloor, setPurchaseFloor] = useState<FloorData | null>(null);
   const [resetTrigger, setResetTrigger] = useState<number>(0);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
 
   // Set default selected floor on initial load if null
   useEffect(() => {
@@ -46,7 +48,13 @@ export default function AppScreen() {
 
   // Purchase flow modal
   // Only the next unbuilt level is purchasable. It is added to the tower after checkout.
-  const handleOpenPurchase = () => {
+  const handleOpenPurchase = (floorToClaim?: FloorData) => {
+    if (floorToClaim) {
+      setPurchaseFloor(floorToClaim.status === 'sold'
+        ? { ...floorToClaim, price: Math.ceil(floorToClaim.price * 1.1) }
+        : floorToClaim);
+      return;
+    }
     const highestFloorNumber = Math.max(...floors.map((floor) => floor.floorNumber), 0);
     const nextFloorNumber = highestFloorNumber + 1;
     const highestPrice = Math.max(...floors.map((floor) => floor.price), 0);
@@ -68,18 +76,25 @@ export default function AppScreen() {
     });
   };
 
-  const handleConfirmPurchase = (campaign: { title: string; bannerUrl: string; targetUrl: string }) => {
+  const handleSelectFloor = (floor: FloorData) => {
+    selectFloor(floor);
+    setInspectorOpen(true);
+  };
+
+  const handleConfirmPurchase = (campaign: { title: string; bannerUrl: string; targetUrl: string; bidAmount: number; claimCode: string }) => {
     if (!purchaseFloor) return;
 
     const updatedFloor: FloorData = {
       ...purchaseFloor,
       status: 'sold',
-      ownerName: currentUser?.name || currentUser?.email || 'UpSpace Member',
+      ownerName: currentUser?.name || currentUser?.email || 'Unclaimed purchase',
+      price: campaign.bidAmount,
       brandTitle: campaign.title,
       tagline: campaign.targetUrl ? 'Interactive campaign live on UpSpace' : 'New campaign now live',
       category: 'Custom Campaign',
       adBannerUrl: campaign.bannerUrl || undefined,
       targetUrl: campaign.targetUrl || undefined,
+      claimCode: campaign.claimCode,
     };
 
     addFloor(updatedFloor);
@@ -102,7 +117,7 @@ export default function AppScreen() {
           autoRotate={autoRotate}
           theme={theme}
           lowPower={lowPower}
-          onSelectFloor={selectFloor}
+          onSelectFloor={handleSelectFloor}
           resetCameraTrigger={resetTrigger}
         />
       </div>
@@ -121,9 +136,21 @@ export default function AppScreen() {
         onToggleAutoRotate={toggleAutoRotate}
         onToggleLowPower={toggleLowPower}
         onResetCamera={handleResetCamera}
-        onSelectFloor={selectFloor}
         onOpenPurchase={handleOpenPurchase}
       />
+
+      {inspectorOpen && selectedFloor && (
+        <aside className="pointer-events-auto absolute right-4 top-20 z-40 w-[calc(100%-2rem)] max-w-sm sm:right-6 sm:top-24">
+          <FloorDetailCard
+            floor={selectedFloor}
+            theme={theme}
+            allFloors={floors}
+            onClose={() => setInspectorOpen(false)}
+            onSelectFloor={handleSelectFloor}
+            onOpenPurchase={handleOpenPurchase}
+          />
+        </aside>
+      )}
 
       {/* 3. PROTOTYPE ACQUISITION MODAL */}
       <PurchaseModal

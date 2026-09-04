@@ -19,6 +19,7 @@ export interface FloorData {
   targetUrl?: string;
   bannerColor?: string;
   contractExpiry?: string;
+  claimCode?: string;
 }
 
 export function getDisplayFloorNumber(floorNumber: number, totalFloors: number): number {
