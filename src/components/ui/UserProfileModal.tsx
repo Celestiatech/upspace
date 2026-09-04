@@ -143,34 +143,38 @@ export function UserProfileModal({
   const isDay = theme === 'day';
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-md animate-in fade-in duration-200 select-none ${isDay ? '' : 'dark'}`}>
-      {/* Seamless borderless popup panel */}
-      <div className="w-full max-w-2xl rounded-3xl p-6 text-slate-100 animate-in zoom-in-95 duration-200 shadow-2xl bg-white/95 dark:bg-[#0b1024]/95 backdrop-blur-2xl max-h-[90vh] overflow-y-auto">
-        
-        {/* Header (borderless) */}
-        <header className="flex items-center justify-between pb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="rounded-xl bg-cyan-500/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-              CITIZEN PROFILE
-            </span>
-            <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
-              UpSpace Identity &amp; Assets
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+      <section
+        className={`w-full max-w-xl rounded-3xl p-6 sm:p-7 border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
+          isDay
+            ? 'bg-white border-slate-200 text-slate-900 shadow-slate-900/20'
+            : 'bg-slate-950 border-white/15 text-white shadow-black/80'
+        }`}
+      >
+        {/* Header Matching How UpSpace Works */}
+        <header className="flex items-start justify-between gap-4 pb-4 border-b border-black/5 dark:border-white/10 shrink-0">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+              Citizen Registry &amp; Assets
+            </p>
+            <h2 className="mt-1 text-2xl font-black tracking-tight">
+              User Profile
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="p-1.5 rounded-full border border-slate-200 dark:border-white/10 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition"
             aria-label="Close profile"
           >
-            <X className="h-5 w-5" />
+            <X size={18} />
           </button>
         </header>
 
         {/* Save success toast */}
         {saveSuccess && (
-          <div className="mt-2 p-3 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+          <div className="mt-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2 animate-in fade-in">
             <Check className="w-4 h-4" />
-            <span>Profile photo and identity updated successfully!</span>
+            <span>Profile identity updated successfully!</span>
           </div>
         )}
 
@@ -502,8 +506,8 @@ export function UserProfileModal({
           )}
         </div>
 
-        {/* Footer (borderless) */}
-        <div className="mt-5 pt-3 flex items-center justify-between text-[11px] text-slate-500">
+        {/* Footer */}
+        <div className="mt-5 pt-3 border-t border-black/5 dark:border-white/10 flex items-center justify-between text-[11px] text-slate-500">
           <span>UpSpace City District · Single Unified Account</span>
           <button
             onClick={onClose}
@@ -512,7 +516,7 @@ export function UserProfileModal({
             Close
           </button>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

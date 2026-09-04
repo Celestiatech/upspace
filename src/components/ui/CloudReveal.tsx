@@ -22,8 +22,15 @@ export function CloudReveal() {
     <div className={`cloud-reveal ${clearing ? 'cloud-reveal--clearing' : ''}`} aria-label="Loading UpSpace">
       <div className="cloud-reveal__base" />
       <div className="cloud-reveal__center">
-        <img src="/spinning-head.gif" alt="Loading UpSpace" className="h-44 w-44 object-contain" />
-        <p>Preparing your skyline…</p>
+        <div className="relative mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-cyan-50 border border-cyan-400/40 text-cyan-600 shadow-xl shadow-cyan-100/50">
+          <div className="absolute inset-0 rounded-2xl border-2 border-cyan-500 border-t-transparent animate-spin" />
+          <svg className="w-8 h-8 text-cyan-600 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/>
+            <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/>
+            <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>
+          </svg>
+        </div>
+        <p className="text-slate-800 font-bold tracking-wider text-sm">LOADING UPSPACE</p>
       </div>
       <div className="cloud-bank cloud-bank--left" />
       <div className="cloud-bank cloud-bank--right" />

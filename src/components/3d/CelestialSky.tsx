@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import { ThemeMode } from '@/types/theme';
+import { Airplane } from './Airplane';
 
 interface CelestialSkyProps {
   theme: ThemeMode;
@@ -12,32 +13,11 @@ interface CelestialSkyProps {
 
 export function CelestialSky({ theme }: CelestialSkyProps) {
   const isDay = theme === 'day';
-  const airplaneRef = useRef<THREE.Group>(null);
-  const beaconRef = useRef<THREE.PointLight>(null);
   const cloudsRef = useRef<THREE.Group>(null);
 
-  // Animate airplane cruising across the sky and cloud drift
+  // Animate cloud drift
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
-
-    // Airplane flight path (slow wide circular arc high in the sky)
-    if (airplaneRef.current) {
-      const radius = 65;
-      const speed = 0.08;
-      const angle = t * speed;
-      airplaneRef.current.position.x = Math.sin(angle) * radius;
-      airplaneRef.current.position.z = Math.cos(angle) * radius;
-      airplaneRef.current.position.y = 42 + Math.sin(t * 0.2) * 1.5;
-      // Orient airplane tangent to flight path
-      airplaneRef.current.rotation.y = angle + Math.PI / 2;
-    }
-
-    // Blinking airplane navigation beacon (strobe)
-    if (beaconRef.current) {
-      beaconRef.current.intensity = (Math.sin(t * 8) > 0.6) ? 3.0 : 0.2;
-    }
-
-    // Gentle cloud drift
     if (cloudsRef.current) {
       cloudsRef.current.rotation.y = t * 0.005;
     }
@@ -118,65 +98,8 @@ export function CelestialSky({ theme }: CelestialSkyProps) {
         />
       )}
 
-      {/* 3. COMMERCIAL AIRPLANE CRUISING HIGH IN THE SKY */}
-      <group ref={airplaneRef} position={[0, 42, 65]}>
-        {/* Fuselage / Cabin Body */}
-        <mesh castShadow>
-          <cylinderGeometry args={[0.32, 0.38, 4.2, 16]} />
-          <meshStandardMaterial color="#f8fafc" metalness={0.8} roughness={0.2} />
-        </mesh>
-        {/* Nose Cone */}
-        <mesh position={[0, 2.3, 0]}>
-          <coneGeometry args={[0.32, 0.8, 16]} />
-          <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.3} />
-        </mesh>
-        {/* Main Wings */}
-        <mesh position={[0, 0.2, 0]}>
-          <boxGeometry args={[6.8, 0.06, 1.1]} />
-          <meshStandardMaterial color="#e2e8f0" metalness={0.85} roughness={0.2} />
-        </mesh>
-        {/* Tail Fin */}
-        <mesh position={[0, -1.8, 0.5]} rotation={[Math.PI / 8, 0, 0]}>
-          <boxGeometry args={[0.08, 1.2, 0.8]} />
-          <meshStandardMaterial color="#0284c7" metalness={0.8} />
-        </mesh>
-        {/* Horizontal Tail Stabilizers */}
-        <mesh position={[0, -1.9, 0]}>
-          <boxGeometry args={[2.2, 0.04, 0.5]} />
-          <meshStandardMaterial color="#e2e8f0" metalness={0.8} />
-        </mesh>
-        {/* Twin Jet Turbofan Engines Under Wings */}
-        {[-1.6, 1.6].map((ex) => (
-          <mesh key={`engine-${ex}`} position={[ex, 0, -0.2]}>
-            <cylinderGeometry args={[0.2, 0.2, 0.9, 12]} />
-            <meshStandardMaterial color="#475569" metalness={0.9} />
-          </mesh>
-        ))}
-
-        {/* Blinking Wing Navigation Lights */}
-        {/* Port Wing (Red) */}
-        <mesh position={[-3.4, 0.2, 0]}>
-          <sphereGeometry args={[0.08, 8, 8]} />
-          <meshBasicMaterial color="#ef4444" />
-        </mesh>
-        {/* Starboard Wing (Green) */}
-        <mesh position={[3.4, 0.2, 0]}>
-          <sphereGeometry args={[0.08, 8, 8]} />
-          <meshBasicMaterial color="#22c55e" />
-        </mesh>
-        {/* Top Anti-Collision Strobe Beacon Light */}
-        <mesh position={[0, 0.5, 0.4]}>
-          <sphereGeometry args={[0.1, 8, 8]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
-        <pointLight
-          ref={beaconRef}
-          position={[0, 0.5, 0.4]}
-          color="#ffffff"
-          distance={16}
-          intensity={2.5}
-        />
-      </group>
+      {/* 3. COMMERCIAL / EXECUTIVE JET CRUISING HIGH IN THE SKY */}
+      <Airplane theme={theme} />
 
       {/* 4. PROCEDURAL ATMOSPHERIC CLOUDS (Drifting in distance) */}
       <group ref={cloudsRef} position={[0, 36, 0]}>

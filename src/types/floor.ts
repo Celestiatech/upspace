@@ -1,8 +1,24 @@
 export type FloorStatus = 'available' | 'sold';
 
+export type VerifiedBadgeType = 'github' | 'indie' | 'startup' | 'enterprise';
+
+export interface FloorBidHistory {
+  bidder: string;
+  amount: number;
+  timestamp: string;
+  isTopBid?: boolean;
+}
+
+export interface FloorSocialLinks {
+  twitter?: string;
+  github?: string;
+  website?: string;
+  linkedin?: string;
+}
+
 export interface FloorData {
   id: string;
-  floorNumber: number;
+  floorNumber: number; // 0-indexed internal (0 = ground floor, 19 = top floor)
   arenaId: string;
   ownerName: string | null;
   brandTitle: string | null;
@@ -20,10 +36,29 @@ export interface FloorData {
   bannerColor?: string;
   contractExpiry?: string;
   claimCode?: string;
+
+  // Legitimacy, Verification & Analytics metadata
+  verifiedDomain?: boolean;
+  verifiedType?: VerifiedBadgeType;
+  safetyScanPassed?: boolean;
+  impressionsWeekly?: number;
+  clicksDelivered?: number;
+  ctr?: number; // e.g. 12.4%
+  daysHeld?: number;
+  leaseExpiryDays?: number; // Days remaining in 7-day retention cycle
+  socialLinks?: FloorSocialLinks;
+  bidHistory?: FloorBidHistory[];
 }
 
-export function getDisplayFloorNumber(floorNumber: number, totalFloors: number): number {
-  // The top (party) floor is the rooftop deck and is not numbered.
-  // The floor directly below it is #1, counting downward to the ground floor.
-  return totalFloors - 1 - floorNumber;
+/**
+ * Returns human-readable floor number:
+ * Floor 0 in internal array = Floor 1 (Lobby / Ground Floor)
+ * Floor 19 = Floor 20 (Penthouse / Spire)
+ */
+export function getDisplayFloorNumber(floorNumber: number, _totalFloors?: number): number {
+  return floorNumber + 1;
+}
+
+export function isPenthouseFloor(floorNumber: number, totalFloors: number): boolean {
+  return floorNumber >= totalFloors - 1;
 }
