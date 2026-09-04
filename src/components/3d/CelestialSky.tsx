@@ -50,7 +50,7 @@ export function CelestialSky({ theme }: CelestialSkyProps) {
         <sphereGeometry args={[140, 32, 32]} />
         <meshBasicMaterial
           side={THREE.BackSide}
-          color={isDay ? '#38bdf8' : '#0c1222'}
+          color={isDay ? '#ef9a71' : '#0c1222'}
         />
       </mesh>
 

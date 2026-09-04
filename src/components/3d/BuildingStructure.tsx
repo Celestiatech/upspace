@@ -3,8 +3,8 @@
 import React from 'react';
 import { Arena } from '@/types/arena';
 import { FloorData } from '@/types/floor';
-import { BuildingPodium } from './BuildingPodium';
 import { BuildingCrown } from './BuildingCrown';
+import { HeadquartersGroundFloor } from './HeadquartersGroundFloor';
 import { FloorMesh } from './FloorMesh';
 import { CityEnvironment } from './CityEnvironment';
 import { CelestialSky } from './CelestialSky';
@@ -15,6 +15,7 @@ interface BuildingStructureProps {
   floors: FloorData[];
   selectedFloor: FloorData | null;
   isDayMode?: boolean;
+  explodeAmount?: number;
   onSelectFloor: (floor: FloorData) => void;
   onHoverFloor?: (floor: FloorData | null) => void;
 }
@@ -24,34 +25,30 @@ export function BuildingStructure({
   floors,
   selectedFloor,
   isDayMode = false,
+  explodeAmount = 0,
   onSelectFloor,
   onHoverFloor,
 }: BuildingStructureProps) {
   const {
     floorHeight,
     baseHeight,
-    antennaHeight,
     themeColor,
   } = arena;
 
   const totalFloors = floors.length;
-  const totalFloorsHeight = totalFloors * floorHeight;
-  const floorsStartY = baseHeight;
-  const roofY = baseHeight + totalFloorsHeight;
+  const totalFloorsHeight = totalFloors * floorHeight + Math.max(0, totalFloors - 1) * explodeAmount;
+  // The headquarters ground floor is a modest-height solid base, not an oversized tower base.
+  const headquartersHeight = baseHeight * 1.4;
+  const floorsStartY = headquartersHeight;
+  const roofY = headquartersHeight + totalFloorsHeight;
 
   // Scalable architectural setback algorithm:
-  // Substantially bulkier proportions (9.2m base tapering to 6.8m top)
+  // All floors share identical proportions (no tapering)
   const getFloorDimensions = (floorNumber: number) => {
-    const progress = floorNumber / Math.max(totalFloors - 1, 1);
-    const baseW = 9.2;
-    const topW = 6.8;
-    const currentW = baseW - Math.floor(progress * 4) * ((baseW - topW) / 3);
-    const radius = 0.85 - progress * 0.2;
-    return { w: currentW, d: currentW, r: radius };
+    const w = 9.2;
+    return { w, d: w, r: 0.85 };
   };
 
-  const baseLobbyWidth = 10.6;
-  const baseLobbyDepth = 10.6;
   const topDimensions = getFloorDimensions(totalFloors - 1);
 
   return (
@@ -61,25 +58,27 @@ export function BuildingStructure({
 
       {/* 2. PLAZA ENVIRONMENT & PEDESTRIANS FOR REALISTIC HUMAN SCALE */}
       <CityEnvironment theme={isDayMode ? 'day' : 'night'} />
-      <PlazaLife theme={isDayMode ? 'day' : 'night'} />
+      <PlazaLife theme={isDayMode ? 'day' : 'night'} gazeHeight={roofY} />
 
-      {/* 2. REALISTIC ENTRANCE PODIUM & PLAZA */}
-      <BuildingPodium
-        width={baseLobbyWidth}
-        depth={baseLobbyDepth}
-        height={baseHeight}
+      {/* 2. GRAND HEADQUARTERS GROUND FLOOR - tall, imposing high-rise base */}
+      <HeadquartersGroundFloor
+        width={getFloorDimensions(0).w * 1.2}
+        height={headquartersHeight}
         themeColor={themeColor}
         isDayMode={isDayMode}
       />
 
       {/* 3. ALL 20 ARCHITECTURAL FLOORS */}
       {floors.map((floor, index) => {
-        const yPos = floorsStartY + index * floorHeight + floorHeight / 2;
+        const yPos = floorsStartY + index * (floorHeight + explodeAmount) + floorHeight / 2;
         const isSelected = selectedFloor?.id === floor.id;
         const { w, d, r } = getFloorDimensions(floor.floorNumber);
 
         // Floor 10 acts as a realistic mid-tower mechanical / service floor
         const isMechanicalFloor = floor.floorNumber === 10;
+
+        // The top floor directly beneath the rooftop terrace has no glass curtain wall
+        const isTopFloor = index === totalFloors - 1;
 
         return (
           <React.Fragment key={floor.id}>
@@ -89,11 +88,14 @@ export function BuildingStructure({
               height={floorHeight}
               width={w}
               depth={d}
+              totalFloors={floors.length}
               cornerRadius={r}
               isSelected={isSelected}
               hasSelection={!!selectedFloor}
               themeColor={themeColor}
               isDayMode={isDayMode}
+              hideGlass={isTopFloor}
+              hideAdvertising={isTopFloor}
               onSelect={onSelectFloor}
               onHover={onHoverFloor}
             />
@@ -118,7 +120,6 @@ export function BuildingStructure({
         topWidth={topDimensions.w}
         topDepth={topDimensions.d}
         roofY={roofY}
-        antennaHeight={antennaHeight}
         themeColor={themeColor}
         isDayMode={isDayMode}
       />

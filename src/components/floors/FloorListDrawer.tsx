@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FloorData } from '@/types/floor';
+import { FloorData, getDisplayFloorNumber } from '@/types/floor';
 import { Arena } from '@/types/arena';
 import { X, Search, CheckCircle, Tag, ArrowRight } from 'lucide-react';
 
@@ -99,6 +99,7 @@ export function FloorListDrawer({
           {filteredFloors.map((floor) => {
             const isSelected = selectedFloor?.id === floor.id;
             const isAvailable = floor.status === 'available';
+            const displayNum = getDisplayFloorNumber(floor.floorNumber, floors.length);
 
             return (
               <div
@@ -115,12 +116,12 @@ export function FloorListDrawer({
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-slate-950/70 border border-white/10 flex items-center justify-center font-mono font-bold text-sm text-white">
-                    F{floor.floorNumber}
+                    F{displayNum}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm text-white">
-                        {floor.brandTitle || `Floor ${floor.floorNumber}`}
+                        {floor.brandTitle || `Floor ${displayNum}`}
                       </span>
                       <span
                         className={`text-[10px] font-mono px-1.5 py-0.5 rounded capitalize ${

@@ -57,9 +57,9 @@ export function BuildingPodium({
 
       {/* 2. SUBSTANTIAL 3-STORY GLASS ATRIUM LOBBY (Floors 1-3) */}
       <group position={[0, height / 2, 0]}>
-        {/* Reinforced Structural Core */}
+        {/* Slim central structural core (keeps the building rigid without a bulky pedestal) */}
         <mesh castShadow receiveShadow>
-          <boxGeometry args={[width + 0.6, height, depth + 0.6]} />
+          <boxGeometry args={[width * 0.3, height, depth * 0.3]} />
           <meshStandardMaterial
             color={isDayMode ? '#334155' : '#070b14'}
             metalness={0.92}
@@ -67,21 +67,50 @@ export function BuildingPodium({
           />
         </mesh>
 
-        {/* Double-Height Grand Glass Curtain Facade with Window Panes */}
-        <mesh position={[0, 0, (depth + 0.6) / 2 + 0.02]}>
-          <planeGeometry args={[width - 0.4, height - 0.3]} />
-          <meshPhysicalMaterial
-            color="#38bdf8"
-            metalness={0.8}
-            roughness={0.08}
-            transmission={0.75}
-            transparent
-            opacity={0.88}
-            emissive={themeColor}
-            emissiveIntensity={0.2}
-            ior={1.52}
-          />
-        </mesh>
+        {/* 2A. SEGMENTED CURTAIN-WALL GLASS (separate window panels built on all 4 sides) */}
+        {([
+          { pos: [0, 0, (depth + 0.6) / 2 + 0.02], rot: [0, 0, 0], w: width - 0.4, cols: 5 },
+          { pos: [0, 0, -(depth + 0.6) / 2 - 0.02], rot: [0, Math.PI, 0], w: width - 0.4, cols: 5 },
+          { pos: [-(width + 0.6) / 2 - 0.02, 0, 0], rot: [0, -Math.PI / 2, 0], w: depth - 0.4, cols: 3 },
+          { pos: [(width + 0.6) / 2 + 0.02, 0, 0], rot: [0, Math.PI / 2, 0], w: depth - 0.4, cols: 3 },
+        ] as { pos: [number, number, number]; rot: [number, number, number]; w: number; cols: number }[]
+        ).map((face, fi) => {
+          const gh = height - 0.3;
+          const rows = 4;
+          const gap = 0.07;
+          const paneW = face.w / face.cols;
+          const paneH = gh / rows;
+          const panes = [];
+          for (let c = 0; c < face.cols; c++) {
+            for (let r = 0; r < rows; r++) {
+              panes.push({
+                px: (c - (face.cols - 1) / 2) * paneW,
+                py: -(r - (rows - 1) / 2) * paneH,
+              });
+            }
+          }
+          return (
+            <group key={`face-${fi}`} position={face.pos} rotation={face.rot}>
+              {/* Dark structural frame backer reveals the pane seams */}
+              <mesh position={[0, 0, -0.012]} rotation={[0, 0, 0]}>
+                <planeGeometry args={[face.w, gh]} />
+                <meshStandardMaterial color={isDayMode ? '#1e293b' : '#0a0f1d'} metalness={0.9} roughness={0.2} />
+              </mesh>
+              {/* Individual solid, dull wall panels (fully sealed - no void) */}
+              {panes.map(({ px, py }, i) => (
+                <mesh key={`pane-${i}`} position={[px, py, 0]} rotation={[0, 0, 0]}>
+                  <planeGeometry args={[paneW - gap, paneH - gap]} />
+                  <meshStandardMaterial
+                    color={isDayMode ? '#94a3b8' : '#1e293b'}
+                    metalness={0.55}
+                    roughness={0.7}
+                    side={THREE.DoubleSide}
+                  />
+                </mesh>
+              ))}
+            </group>
+          );
+        })}
 
         {/* Interior Lobby Reception Desk & Architectural Columns Visible Through Glass */}
         <mesh position={[0, -height * 0.25, 0]}>
@@ -109,15 +138,6 @@ export function BuildingPodium({
 
         {/* Grand Entrance Architectural Cantilevered Canopy */}
         <group position={[0, -height * 0.1, (depth + 0.6) / 2 + 0.85]}>
-          <mesh castShadow receiveShadow>
-            <boxGeometry args={[width * 0.75, 0.14, 1.6]} />
-            <meshStandardMaterial
-              color={isDayMode ? '#475569' : '#0f172a'}
-              metalness={0.95}
-              roughness={0.18}
-            />
-          </mesh>
-
           {/* Under-Canopy Recessed Downlight Strip */}
           <mesh position={[0, -0.075, 0]}>
             <planeGeometry args={[width * 0.7, 1.4]} />
@@ -154,22 +174,74 @@ export function BuildingPodium({
           </Text>
         </group>
 
-        {/* Structural Load Columns Supporting Lobby Atrium */}
-        {[-width / 2 + 0.35, -width / 4, width / 4, width / 2 - 0.35].map((colX) => (
-          <mesh
-            key={`podium-col-${colX}`}
-            position={[colX, 0, (depth + 0.6) / 2 + 0.75]}
-            castShadow
-          >
-            <cylinderGeometry args={[0.13, 0.15, height, 16]} />
-            <meshStandardMaterial
-              color={isDayMode ? '#64748b' : '#334155'}
-              metalness={0.95}
-              roughness={0.15}
-            />
-          </mesh>
-        ))}
       </group>
+
+      {/* 2B. STRUCTURAL BASE PILLARS WITH AD BILLBOARDS ON ALL 4 SIDES */}
+      {[
+        { pos: [0, 0, depth / 2 + 0.75], rot: 0, brand: 'UpSpace', tag: 'CLAIM THE TOP FLOOR', leader: true },
+        { pos: [0, 0, -(depth / 2 + 0.55)], rot: Math.PI, brand: 'Floorverse', tag: 'OUTBID · STAND ABOVE', leader: false },
+        { pos: [-(width / 2 + 0.55), 0, 0], rot: -Math.PI / 2, brand: 'UpSpace', tag: 'YOUR BRAND UP HERE', leader: false },
+        { pos: [width / 2 + 0.55, 0, 0], rot: Math.PI / 2, brand: 'Floorverse', tag: 'TOP SPACE FOR SALE', leader: false },
+      ].map((side, i) => {
+        const w = side.leader ? 4.2 : 3.2;
+        const h = side.leader ? 1.6 : 1.3;
+        const baseY = 0.1;
+        return (
+          <group key={`base-billboard-${i}`} position={side.pos as [number, number, number]} rotation={[0, side.rot, 0]}>
+            {/* Pair of structural support pillars */}
+            {[-w / 2 + 0.25, w / 2 - 0.25].map((px) => (
+              <group key={`sb-pillar-${px}`}>
+                <mesh position={[px, baseY + h / 2, 0]} castShadow>
+                  <cylinderGeometry args={[0.14, 0.18, h, 12]} />
+                  <meshStandardMaterial color={isDayMode ? '#d6d3d1' : '#3b3f46'} metalness={0.7} roughness={0.35} />
+                </mesh>
+                <mesh position={[px, baseY + h + 0.18, 0]}>
+                  <cylinderGeometry args={[0.2, 0.2, 0.12, 12]} />
+                  <meshStandardMaterial color={isDayMode ? '#a8a29e' : '#2b2f35'} metalness={0.85} roughness={0.3} />
+                </mesh>
+              </group>
+            ))}
+            {/* Billboard panel */}
+            <mesh position={[0, baseY + h + 0.55, 0]} castShadow>
+              <boxGeometry args={[w, h, 0.16]} />
+              <meshStandardMaterial color={isDayMode ? '#f8fafc' : '#11151c'} roughness={0.5} />
+            </mesh>
+            {/* Frame trim */}
+            <mesh position={[0, baseY + h + 0.55, -0.1]}>
+              <boxGeometry args={[w + 0.14, h + 0.14, 0.05]} />
+              <meshStandardMaterial color={isDayMode ? '#171717' : '#1c1917'} metalness={0.88} />
+            </mesh>
+            {/* Illuminated brand */}
+            <Text
+              position={[0, baseY + h + 0.68, 0.11]}
+              rotation={[0, 0, 0]}
+              fontSize={side.leader ? 0.5 : 0.38}
+              color={isDayMode ? '#111827' : '#f8fafc'}
+              fontWeight="bold"
+              anchorX="center"
+              anchorY="middle"
+            >
+              {side.brand}
+            </Text>
+            <Text
+              position={[0, baseY + h + 0.42, 0.11]}
+              rotation={[0, 0, 0]}
+              fontSize={side.leader ? 0.22 : 0.18}
+              color={themeColor}
+              letterSpacing={0.15}
+              anchorX="center"
+              anchorY="middle"
+            >
+              {side.tag}
+            </Text>
+            {/* Base footing */}
+            <mesh position={[0, baseY + 0.06, 0]} castShadow>
+              <boxGeometry args={[w + 0.3, 0.12, 0.4]} />
+              <meshStandardMaterial color={isDayMode ? '#64748b' : '#1e293b'} metalness={0.8} roughness={0.3} />
+            </mesh>
+          </group>
+        );
+      })}
 
       {/* 3. LANDSCAPED GRANITE PLANTERS WITH TREES & BOLLARD LIGHTS */}
       {[-1, 1].map((xSign) =>

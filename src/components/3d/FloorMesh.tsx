@@ -13,11 +13,14 @@ interface FloorMeshProps {
   height: number;
   width: number;
   depth: number;
+  totalFloors: number;
   cornerRadius?: number;
   isSelected: boolean;
   hasSelection: boolean;
   themeColor: string;
   isDayMode?: boolean;
+  hideGlass?: boolean;
+  hideAdvertising?: boolean;
   onSelect: (floor: FloorData) => void;
   onHover?: (floor: FloorData | null) => void;
 }
@@ -44,11 +47,14 @@ export function FloorMesh({
   height,
   width,
   depth,
+  totalFloors,
   cornerRadius = 0.55,
   isSelected,
   hasSelection,
   themeColor,
   isDayMode = false,
+  hideGlass = false,
+  hideAdvertising = false,
   onSelect,
   onHover,
 }: FloorMeshProps) {
@@ -128,8 +134,8 @@ export function FloorMesh({
       >
         <extrudeGeometry args={[slabShape, extrudeSettings]} />
         <meshStandardMaterial
-          color={isDimmed ? (isDayMode ? '#94a3b8' : '#0a0d18') : isDayMode ? '#64748b' : '#0f172a'}
-          metalness={isDayMode ? 0.3 : 0.85}
+          color={isDimmed ? '#3f3f46' : '#222222'}
+          metalness={0.82}
           roughness={0.25}
         />
       </mesh>
@@ -161,10 +167,13 @@ export function FloorMesh({
           width={width}
           depth={depth}
           height={height}
+          totalFloors={totalFloors}
           cornerRadius={cornerRadius}
           isSelected={isSelected}
           isHovered={hovered}
           isDayMode={isDayMode}
+          hideGlass={hideGlass}
+          hideAdvertising={hideAdvertising}
         />
       </group>
 
@@ -173,9 +182,11 @@ export function FloorMesh({
         floor={floor}
         width={width}
         height={height}
+        totalFloors={totalFloors}
         isSelected={isSelected}
         isHovered={hovered}
         isDayMode={isDayMode}
+        hideAdvertising={hideAdvertising}
       />
       {/* 4. UPPER CEILING SLAB DIVIDER */}
       <mesh
@@ -185,8 +196,8 @@ export function FloorMesh({
       >
         <extrudeGeometry args={[slabShape, extrudeSettings]} />
         <meshStandardMaterial
-          color={isDimmed ? (isDayMode ? '#94a3b8' : '#0a0d18') : isDayMode ? '#64748b' : '#0f172a'}
-          metalness={isDayMode ? 0.3 : 0.85}
+          color={isDimmed ? '#3f3f46' : '#222222'}
+          metalness={0.82}
           roughness={0.25}
         />
       </mesh>

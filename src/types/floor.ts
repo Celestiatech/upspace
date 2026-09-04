@@ -20,3 +20,9 @@ export interface FloorData {
   bannerColor?: string;
   contractExpiry?: string;
 }
+
+export function getDisplayFloorNumber(floorNumber: number, totalFloors: number): number {
+  // The top (party) floor is the rooftop deck and is not numbered.
+  // The floor directly below it is #1, counting downward to the ground floor.
+  return totalFloors - 1 - floorNumber;
+}

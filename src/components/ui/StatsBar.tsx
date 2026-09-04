@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Arena } from '@/types/arena';
-import { FloorData } from '@/types/floor';
+import { FloorData, getDisplayFloorNumber } from '@/types/floor';
 import { Building, CheckCircle2, DollarSign, Trophy, ArrowUpRight } from 'lucide-react';
 
 import { ThemeMode } from '@/types/theme';
@@ -20,7 +20,7 @@ export function StatsBar({ arena, floors, selectedFloor, theme, onOpenDirectory 
   const totalFloors = floors.length;
   const occupiedFloors = floors.filter((f) => f.status === 'sold').length;
   const availableFloors = floors.filter((f) => f.status === 'available').length;
-  const highestFloor = Math.max(...floors.map((f) => f.floorNumber), 0);
+  const highestFloor = Math.max(...floors.map((f) => getDisplayFloorNumber(f.floorNumber, floors.length)), 0);
   const totalHeightMeters = Math.round(arena.baseHeight * 3 + arena.totalFloors * 4.5);
 
   return (

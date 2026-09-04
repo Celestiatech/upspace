@@ -179,6 +179,7 @@ export function ProceduralBuilding({
             height={floorHeight}
             width={w}
             depth={d}
+            totalFloors={floors.length}
             cornerRadius={r}
             isSelected={isSelected}
             hasSelection={selectedFloor !== null}

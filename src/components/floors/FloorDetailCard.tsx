@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FloorData } from '@/types/floor';
+import { FloorData, getDisplayFloorNumber } from '@/types/floor';
 import { ThemeMode } from '@/types/theme';
 import { X, Sparkles, ExternalLink, ChevronLeft, ChevronRight, Building2, MapPin } from 'lucide-react';
 
@@ -26,6 +26,7 @@ export function FloorDetailCard({
 
   const isDay = theme === 'day';
   const isAvailable = floor.status === 'available';
+  const displayNum = getDisplayFloorNumber(floor.floorNumber, allFloors.length);
 
   const currentIndex = allFloors.findIndex((f) => f.id === floor.id);
   const prevFloor = currentIndex > 0 ? allFloors[currentIndex - 1] : null;
@@ -78,7 +79,7 @@ export function FloorDetailCard({
           {/* FLOOR NUMBER & TITLE */}
           <div>
             <div className="tech-label">
-              FLOOR {floor.floorNumber}
+              FLOOR {displayNum}
             </div>
             <div className="mt-1 text-2xl font-extrabold tracking-[-0.03em]">
               {floor.brandTitle || 'AVAILABLE'}
@@ -158,7 +159,7 @@ export function FloorDetailCard({
               <button
                 onClick={() => {
                   alert(
-                    `Commercial Space Details for Floor ${floor.floorNumber}:\n- Business: ${floor.brandTitle}\n- Owner: ${floor.ownerName}\n- Exposure: ${floor.impressionsPerDay}\n- Format: ${floor.dimensions}\n\nVisitor showroom console connects in Phase 2!`
+                    `Commercial Space Details for Floor ${displayNum}:\n- Business: ${floor.brandTitle}\n- Owner: ${floor.ownerName}\n- Exposure: ${floor.impressionsPerDay}\n- Format: ${floor.dimensions}\n\nVisitor showroom console connects in Phase 2!`
                   );
                 }}
                 className="w-full py-3 px-4 rounded-xl bg-black/5 dark:bg-white/[0.07] hover:bg-black/10 dark:hover:bg-white/[0.12] text-sm font-semibold border border-black/10 dark:border-white/10 flex items-center justify-center gap-2 transition hover:scale-[1.01] active:scale-[0.99]"

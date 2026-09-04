@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FloorData } from '@/types/floor';
+import { FloorData, getDisplayFloorNumber } from '@/types/floor';
 import { ThemeMode } from '@/types/theme';
 
 interface FloorSelectorProps {
@@ -48,9 +48,9 @@ export function FloorSelector({
                   ? 'text-slate-700 hover:text-slate-950 hover:bg-slate-200/60'
                   : 'text-slate-400 hover:text-white hover:bg-white/10'
               }`}
-              title={`Floor ${floor.floorNumber} - ${floor.brandTitle || 'Available'} (₹${floor.price})`}
+              title={`Floor ${getDisplayFloorNumber(floor.floorNumber, floors.length)} - ${floor.brandTitle || 'Available'} (₹${floor.price})`}
             >
-              <span>{floor.floorNumber}</span>
+              <span>{getDisplayFloorNumber(floor.floorNumber, floors.length)}</span>
 
               {/* Status Dot */}
               <span

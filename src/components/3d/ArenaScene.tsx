@@ -17,6 +17,7 @@ interface ArenaSceneProps {
   selectedFloor: FloorData | null;
   autoRotate: boolean;
   theme: ThemeMode;
+  lowPower?: boolean;
   onSelectFloor: (floor: FloorData) => void;
   onHoverFloor?: (floor: FloorData | null) => void;
   resetCameraTrigger?: number;
@@ -28,6 +29,7 @@ export function ArenaScene({
   selectedFloor,
   autoRotate,
   theme,
+  lowPower = false,
   onSelectFloor,
   onHoverFloor,
   resetCameraTrigger,
@@ -36,11 +38,31 @@ export function ArenaScene({
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
 
-  // Locked front-facing product view: eye-level with the lower tower facade.
-  const defaultTargetY = 2.5;
-  const defaultCameraPosition = new THREE.Vector3(0, 2.5, 65);
+  // Frame the upper half of the tower so the stacked silhouette + rooftop are visible on load.
+  const defaultTargetY = arena.baseHeight + floors.length * arena.floorHeight * 0.8;
+  const defaultCameraPosition = new THREE.Vector3(21, defaultTargetY + 10, 47);
   const targetFocus = useRef(new THREE.Vector3(0, defaultTargetY, 0));
   const targetCameraPos = useRef(defaultCameraPosition.clone());
+  const [explodeAmount, setExplodeAmount] = React.useState(0);
+
+  useEffect(() => {
+    const handleSceneControl = (event: Event) => {
+      const action = (event as CustomEvent<string>).detail;
+      const target = targetFocus.current;
+      const offset = targetCameraPos.current.clone().sub(target);
+
+      if (action === 'zoom-in') targetCameraPos.current.copy(target).add(offset.multiplyScalar(0.82));
+      if (action === 'zoom-out') targetCameraPos.current.copy(target).add(offset.multiplyScalar(1.22));
+      if (action === 'rotate-left' || action === 'rotate-right') {
+        const angle = action === 'rotate-left' ? 0.28 : -0.28;
+        offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+        targetCameraPos.current.copy(target).add(offset);
+      }
+      if (action === 'toggle-explode') setExplodeAmount((value) => (value > 0 ? 0 : 0.55));
+    };
+    window.addEventListener('upspace:scene-control', handleSceneControl);
+    return () => window.removeEventListener('upspace:scene-control', handleSceneControl);
+  }, []);
 
   // When selectedFloor changes, smoothly reframe camera vertically
   useEffect(() => {
@@ -48,14 +70,14 @@ export function ArenaScene({
       const floorIndex = floors.findIndex((f) => f.id === selectedFloor.id);
       const floorY = arena.baseHeight + floorIndex * arena.floorHeight + arena.floorHeight / 2;
 
-      targetFocus.current.set(0, floorY, 0);
+      targetFocus.current.set(0, floorY + 4.5, 0);
 
       const currentCam = camera.position;
       const horizontalDir = new THREE.Vector2(currentCam.x, currentCam.z).normalize();
       const focusDistance = 45;
       targetCameraPos.current.set(
         horizontalDir.x * focusDistance,
-        floorY,
+        floorY + 9,
         horizontalDir.y * focusDistance
       );
     } else {
@@ -88,30 +110,33 @@ export function ArenaScene({
   return (
     <>
       {/* 1. PHOTOREALISTIC ARCHITECTURAL SKY & ENVIRONMENT REFLECTION (Requirement #5) */}
-      <Environment preset={isDayMode ? 'city' : 'night'} />
+      <Environment
+        preset={isDayMode ? 'city' : 'night'}
+        resolution={lowPower ? 64 : 256}
+      />
         {/* Ground Plane */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow>
           <planeGeometry args={[500, 500]} />
           <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.6} />
         </mesh>
         {/* Grid Helper */}
-        <gridHelper args={[200, 50, "#38bdf8", "#1e293b"]} position={[0, -1.9, 0]} />
+        {!lowPower && <gridHelper args={[200, 50, "#38bdf8", "#1e293b"]} position={[0, -1.9, 0]} />}
 
       // Post‑processing effects omitted for production build
 
       {/* Ambient fill */}
       <ambientLight
-        intensity={isDayMode ? 1.4 : 0.4}
+        intensity={isDayMode ? (lowPower ? 1.65 : 1.9) : 0.55}
         color={isDayMode ? '#ffffff' : '#94a3b8'}
       />
 
       {/* Main directional architectural sunlight casting crisp building shadows */}
       <directionalLight
         position={isDayMode ? [34, 52, 28] : [26, 44, 20]}
-        intensity={isDayMode ? 2.4 : 1.2}
+        intensity={isDayMode ? 3.1 : 1.2}
         color={isDayMode ? '#fffbeb' : '#ffffff'}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={lowPower ? [512, 512] : [2048, 2048]}
         shadow-camera-left={-32}
         shadow-camera-right={32}
         shadow-camera-top={50}
@@ -160,6 +185,7 @@ export function ArenaScene({
         floors={floors}
         selectedFloor={selectedFloor}
         isDayMode={isDayMode}
+        explodeAmount={explodeAmount}
         onSelectFloor={onSelectFloor}
         onHoverFloor={onHoverFloor}
       />

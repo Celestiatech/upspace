@@ -1,19 +1,6 @@
 import type { Metadata } from 'next';
-import { Manrope, Space_Grotesk } from 'next/font/google';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import './globals.css';
-
-const manrope = Manrope({
-  subsets: ['latin'],
-  variable: '--font-manrope',
-  display: 'swap',
-});
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-space-grotesk',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: 'UpSpace | 3D Virtual Advertising Skyline Marketplace',
@@ -29,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark scroll-smooth">
-      <body className={`${manrope.variable} ${spaceGrotesk.variable} antialiased bg-transparent text-slate-100 overflow-x-hidden select-none`}>
+      <body className="antialiased bg-transparent text-slate-100 overflow-x-hidden select-none">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

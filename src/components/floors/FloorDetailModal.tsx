@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FloorData } from '@/types/floor';
+import { FloorData, getDisplayFloorNumber } from '@/types/floor';
 import { Arena } from '@/types/arena';
 import {
   X,
@@ -38,6 +38,7 @@ export function FloorDetailModal({
 
   const isDay = theme === 'day';
   const isAvailable = floor.status === 'available';
+  const displayNum = getDisplayFloorNumber(floor.floorNumber, allFloors.length);
   const currentIndex = allFloors.findIndex((f) => f.id === floor.id);
   const prevFloor = currentIndex > 0 ? allFloors[currentIndex - 1] : null;
   const nextFloor = currentIndex < allFloors.length - 1 ? allFloors[currentIndex + 1] : null;
@@ -66,11 +67,11 @@ export function FloorDetailModal({
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center font-bold text-white font-mono text-sm border border-white/10">
-              #{floor.floorNumber}
+              #{displayNum}
             </div>
             <div>
               <h3 className="font-extrabold text-white text-base leading-tight">
-                Floor {floor.floorNumber}
+                Floor {displayNum}
               </h3>
               <span className="text-[11px] text-slate-400 font-mono">
                 {arena.name} • {floor.elevationMeters}m Elevation
@@ -187,7 +188,7 @@ export function FloorDetailModal({
           {/* View Floor Button (specifically requested) */}
           <button
             onClick={() => {
-              alert(`Floor ${floor.floorNumber} 3D Advertising Details:\n- Owner: ${floor.ownerName || 'None'}\n- Status: ${floor.status}\n- Price: ₹${floor.price}\n- Dimensions: ${floor.dimensions}\n\nFull advertising management console connects in Phase 2!`);
+              alert(`Floor ${displayNum} 3D Advertising Details:\n- Owner: ${floor.ownerName || 'None'}\n- Status: ${floor.status}\n- Price: ₹${floor.price}\n- Dimensions: ${floor.dimensions}\n\nFull advertising management console connects in Phase 2!`);
             }}
             className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs sm:text-sm border border-white/15 flex items-center justify-center gap-2 transition hover:shadow-lg active:scale-98"
           >
@@ -198,7 +199,7 @@ export function FloorDetailModal({
           {isAvailable ? (
             <button
               onClick={() => {
-                alert(`Proceeding to reserve Floor ${floor.floorNumber} for ₹${floor.price}! (Payment Gateway integration ready for Phase 2)`);
+                alert(`Proceeding to reserve Floor ${displayNum} for ₹${floor.price}! (Payment Gateway integration ready for Phase 2)`);
               }}
               className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/30 active:scale-98"
             >
@@ -208,7 +209,7 @@ export function FloorDetailModal({
           ) : (
             <button
               onClick={() => {
-                alert(`Submitting advertising sponsorship inquiry to Floor ${floor.floorNumber} (${floor.ownerName}).`);
+                alert(`Submitting advertising sponsorship inquiry to Floor ${displayNum} (${floor.ownerName}).`);
               }}
               className="w-full py-2.5 px-4 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold text-xs border border-amber-500/40 flex items-center justify-center gap-2 transition"
             >

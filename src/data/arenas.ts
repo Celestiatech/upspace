@@ -81,7 +81,7 @@ export const CURRENT_ARENA: Arena = {
   tagline: 'Global Enterprise & Financial Headquarters',
   description: 'The pinnacle of corporate presence in UpSpace. Prime digital advertising for venture funds, tech firms, and global brands.',
   model: '/models/business-tower.glb',
-  floorHeight: 3.0,
+  floorHeight: 2.45,
   totalFloors: 20,
   themeColor: '#00f0ff',
   accentColor: '#38bdf8',

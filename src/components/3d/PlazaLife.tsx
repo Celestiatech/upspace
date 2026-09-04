@@ -4,9 +4,11 @@ import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { ThemeMode } from '@/types/theme';
+import { RealisticHuman } from './RealisticHuman';
 
 interface PlazaLifeProps {
   theme: ThemeMode;
+  gazeHeight?: number;
 }
 
 function TowerWatcher({
@@ -38,13 +40,14 @@ function TowerWatcher({
       0.08 + Math.abs(Math.sin(time * 1.4 + index)) * 0.025,
       Math.sin(angle) * radius
     );
+    // Face the tower horizontally; the head is tilted upward separately.
     visitor.lookAt(0, visitor.position.y, 0);
   });
 
   return <group ref={visitorRef}>{children}</group>;
 }
 
-export function PlazaLife({ theme }: PlazaLifeProps) {
+export function PlazaLife({ theme, gazeHeight = 1.8 }: PlazaLifeProps) {
   const isDay = theme === 'day';
 
   // 18 pedestrians placed realistically around the entrance plaza, curbs, and benches
@@ -92,53 +95,23 @@ export function PlazaLife({ theme }: PlazaLifeProps) {
     <group position={[0, 0, 0]}>
       {people.map((p, i) => {
         const skinTones = ['#f4c7a1', '#d99a6c', '#9a5d3b', '#6f3e27'];
-        const skin = isDay ? skinTones[i % skinTones.length] : '#b9c3d2';
         const hair = ['#1c1917', '#3f2a1d', '#713f12', '#0f172a'][i % 4];
-        const legHeight = p.height * 0.4;
-        const torsoHeight = p.height * 0.35;
+        const seated = p.height < 0.9;
+        const headY = p.height * 0.85 + 0.1;
+        const distance = Math.max(Math.hypot(p.x, p.z), 14);
+        const headTilt = Math.min(Math.atan2(Math.max(0, gazeHeight - headY), distance), Math.PI / 2.1);
 
         return (
           <TowerWatcher key={`plaza-person-${i}`} x={p.x} z={p.z} index={i}>
-            {/* Separate legs give each visitor a grounded, human silhouette. */}
-            {[-0.055, 0.055].map((x) => (
-              <mesh key={x} position={[x, legHeight / 2, 0]} castShadow>
-                <capsuleGeometry args={[0.045, legHeight - 0.09, 6, 8]} />
-                <meshStandardMaterial color="#1e293b" roughness={0.8} />
-              </mesh>
-            ))}
-
-            {/* Tapered jacket / shirt torso */}
-            <mesh position={[0, legHeight + torsoHeight / 2, 0]} castShadow>
-              <cylinderGeometry args={[0.105, 0.135, torsoHeight, 8]} />
-              <meshStandardMaterial color={p.color} roughness={0.72} />
-            </mesh>
-
-            {/* Arms, posed slightly apart from the body */}
-            {[-1, 1].map((side) => (
-              <mesh
-                key={side}
-                position={[side * 0.14, legHeight + torsoHeight * 0.58, 0]}
-                rotation={[0, 0, side * 0.16]}
-                castShadow
-              >
-                <capsuleGeometry args={[0.034, torsoHeight * 0.65, 5, 8]} />
-                <meshStandardMaterial color={p.color} roughness={0.72} />
-              </mesh>
-            ))}
-
-            <mesh position={[0, legHeight + torsoHeight + 0.035, 0]} castShadow>
-              <cylinderGeometry args={[0.045, 0.045, 0.07, 8]} />
-              <meshStandardMaterial color={skin} roughness={0.7} />
-            </mesh>
-            <mesh position={[0, p.height * 0.91, 0]} castShadow>
-              <sphereGeometry args={[0.105, 12, 10]} />
-              <meshStandardMaterial color={skin} roughness={0.68} />
-            </mesh>
-            <mesh position={[0, p.height * 0.975, -0.015]} scale={[1.03, 0.46, 1.04]} castShadow>
-              <sphereGeometry args={[0.105, 12, 8]} />
-              <meshStandardMaterial color={hair} roughness={0.9} />
-            </mesh>
-
+            <RealisticHuman
+              shirtColor={p.color}
+              height={p.height}
+              isDayMode={isDay}
+              pose={seated ? 'sitting' : 'walking'}
+              skinTone={skinTones[i % skinTones.length]}
+              hairColor={hair}
+              headTilt={seated ? headTilt * 0.6 : headTilt}
+            />
             <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <circleGeometry args={[0.2, 16]} />
               <meshBasicMaterial color="#000000" transparent opacity={0.22} />

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FloorData } from '@/types/floor';
+import { FloorData, getDisplayFloorNumber } from '@/types/floor';
 import { ThemeMode } from '@/types/theme';
 import { Eye, Sparkles, Filter, CheckCircle2 } from 'lucide-react';
 
@@ -76,6 +76,8 @@ export function FloorMarketplace({
         {filteredFloors.map((floor) => {
           const isAvailable = floor.status === 'available';
 
+          const displayNum = getDisplayFloorNumber(floor.floorNumber, floors.length);
+
           return (
             <div
               key={floor.id}
@@ -90,10 +92,10 @@ export function FloorMarketplace({
                 <div className="flex items-center justify-between pb-3">
                   <div className="flex items-center gap-2">
                     <span className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center font-mono font-bold text-xs text-cyan-400">
-                      {floor.floorNumber}
+                      {displayNum}
                     </span>
                     <span className="font-bold text-sm">
-                      FLOOR {floor.floorNumber}
+                      FLOOR {displayNum}
                     </span>
                   </div>
 

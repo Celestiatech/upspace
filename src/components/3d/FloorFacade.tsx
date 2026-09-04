@@ -11,10 +11,13 @@ interface FloorFacadeProps {
   width: number;
   depth: number;
   height: number;
+  totalFloors: number;
   cornerRadius?: number;
   isSelected: boolean;
   isHovered: boolean;
   isDayMode?: boolean;
+  hideGlass?: boolean;
+  hideAdvertising?: boolean;
 }
 
 // Generate rounded rectangle profile for architectural glass
@@ -39,10 +42,13 @@ export function FloorFacade({
   width,
   depth,
   height,
+  totalFloors,
   cornerRadius = 0.55,
   isSelected,
   isHovered,
   isDayMode = false,
+  hideGlass = false,
+  hideAdvertising = false,
 }: FloorFacadeProps) {
   const glassShape = useMemo(() => {
     return createRoundedRectShape(width - 0.08, depth - 0.08, cornerRadius - 0.04);
@@ -59,6 +65,7 @@ export function FloorFacade({
         isSelected={isSelected}
         isHovered={isHovered}
         isDayMode={isDayMode}
+        hideGlass={hideGlass}
       />
 
       {/* 2. MULTI-SIDED ADVERTISING SUITE (Front, Back, Left, Right, 360° Ribbon & Corner Displays) */}
@@ -67,9 +74,11 @@ export function FloorFacade({
         width={width}
         depth={depth}
         height={height}
+        totalFloors={totalFloors}
         isSelected={isSelected}
         isHovered={isHovered}
         isDayMode={isDayMode}
+        hideAdvertising={hideAdvertising}
       />
     </group>
   );

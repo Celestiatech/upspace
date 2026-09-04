@@ -3,6 +3,7 @@
 import React from 'react';
 import * as THREE from 'three';
 import { InteriorOffice } from './InteriorOffice';
+import { PartyInterior } from './PartyInterior';
 
 interface GlassFacadeProps {
   width: number;
@@ -12,6 +13,7 @@ interface GlassFacadeProps {
   isSelected: boolean;
   isHovered: boolean;
   isDayMode?: boolean;
+  hideGlass?: boolean;
 }
 
 export function GlassFacade({
@@ -22,20 +24,32 @@ export function GlassFacade({
   isSelected,
   isHovered,
   isDayMode = false,
+  hideGlass = false,
 }: GlassFacadeProps) {
   const glassHeight = height - 0.16;
 
   return (
     <group position={[0, 0, 0]}>
-      {/* 1. INTERIOR OFFICE ENVIRONMENT (Desks, monitors, chairs, and ceiling lights) */}
-      <InteriorOffice
-        width={width}
-        depth={depth}
-        height={height}
-        isSelected={isSelected}
-        isDayMode={isDayMode}
-      />
+      {/* 1. INTERIOR ENVIRONMENT (Party club on the open terrace floor, office elsewhere) */}
+      {hideGlass ? (
+        <PartyInterior
+          width={width}
+          depth={depth}
+          height={height}
+          isSelected={isSelected}
+          isDayMode={isDayMode}
+        />
+      ) : (
+        <InteriorOffice
+          width={width}
+          depth={depth}
+          height={height}
+          isSelected={isSelected}
+          isDayMode={isDayMode}
+        />
+      )}
 
+      {!hideGlass && (<>
       {/* 2. REALISTIC PBR ARCHITECTURAL GLASS (Fresnel, reflections, transmission, IOR 1.52) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -glassHeight / 2, 0]}>
         <extrudeGeometry args={[glassShape, { depth: glassHeight, bevelEnabled: false }]} />
@@ -102,6 +116,7 @@ export function GlassFacade({
           </mesh>
         </React.Fragment>
       ))}
+      </>)}
     </group>
   );
 }

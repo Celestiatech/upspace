@@ -10,6 +10,7 @@ interface BuildingViewerProps {
   floors: FloorData[];
   selectedFloor: FloorData | null;
   isDayMode?: boolean;
+  explodeAmount?: number;
   onSelectFloor: (floor: FloorData) => void;
   onHoverFloor?: (floor: FloorData | null) => void;
 }
@@ -19,6 +20,7 @@ export function BuildingViewer({
   floors,
   selectedFloor,
   isDayMode = false,
+  explodeAmount = 0,
   onSelectFloor,
   onHoverFloor,
 }: BuildingViewerProps) {
@@ -28,6 +30,7 @@ export function BuildingViewer({
       floors={floors}
       selectedFloor={selectedFloor}
       isDayMode={isDayMode}
+      explodeAmount={explodeAmount}
       onSelectFloor={onSelectFloor}
       onHoverFloor={onHoverFloor}
     />

@@ -1,57 +1,47 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CURRENT_ARENA } from '@/data/arenas';
-import { getFloorsForArena } from '@/data/floors';
 import { FloorData } from '@/types/floor';
-import { ThemeMode } from '@/types/theme';
 import { ArenaCanvas } from '@/components/3d/ArenaCanvas';
 import { GameHUD } from '@/components/ui/GameHUD';
 import { PurchaseModal } from '@/components/ui/PurchaseModal';
-
-// Helper to determine theme from user device time (6 AM to 6 PM = Day, 6 PM to 6 AM = Night)
-const getThemeFromDeviceTime = (): ThemeMode => {
-  if (typeof window === 'undefined') return 'night';
-  const hour = new Date().getHours();
-  return hour >= 6 && hour < 18 ? 'day' : 'night';
-};
+import { CloudReveal } from '@/components/ui/CloudReveal';
+import { useAppStore } from '@/store/useAppStore';
 
 export default function AppScreen() {
   const arena = CURRENT_ARENA;
-  const initialFloors = useMemo(() => getFloorsForArena(arena.id), [arena.id]);
-  const [floors, setFloors] = useState<FloorData[]>(initialFloors);
 
-  // Start the experience at ground floor (Floor 0).
-  const [selectedFloor, setSelectedFloor] = useState<FloorData | null>(() => {
-    const list = getFloorsForArena(CURRENT_ARENA.id);
-    return list[0] || null;
-  });
+  // Zustand persistent state
+  const floors = useAppStore((state) => state.floors);
+  const selectedFloor = useAppStore((state) => state.selectedFloor);
+  const theme = useAppStore((state) => state.theme);
+  const autoRotate = useAppStore((state) => state.autoRotate);
+  const lowPower = useAppStore((state) => state.lowPower);
+  const addFloor = useAppStore((state) => state.addFloor);
+  const selectFloor = useAppStore((state) => state.selectFloor);
+  const toggleTheme = useAppStore((state) => state.toggleTheme);
+  const toggleAutoRotate = useAppStore((state) => state.toggleAutoRotate);
+  const toggleLowPower = useAppStore((state) => state.toggleLowPower);
+  const currentUser = useAppStore((state) => state.user);
 
-  const [autoRotate, setAutoRotate] = useState<boolean>(true);
-  const [theme, setTheme] = useState<ThemeMode>('day');
   const [purchaseFloor, setPurchaseFloor] = useState<FloorData | null>(null);
   const [resetTrigger, setResetTrigger] = useState<number>(0);
 
-  // Theme toggle (Day / Night)
-  const handleToggleTheme = () => {
-    setTheme((prev) => (prev === 'day' ? 'night' : 'day'));
-  };
-
-  // Auto-rotate toggle
-  const handleToggleAutoRotate = () => {
-    setAutoRotate((prev) => !prev);
-  };
+  // Set default selected floor on initial load if null
+  useEffect(() => {
+    if (!selectedFloor && floors.length > 0) {
+      selectFloor(floors[0]);
+    }
+  }, [selectedFloor, floors, selectFloor]);
 
   // Reset camera view to ground floor.
   const handleResetCamera = () => {
     const groundFloor = floors[0];
-    setSelectedFloor(groundFloor);
+    if (groundFloor) {
+      selectFloor(groundFloor);
+    }
     setResetTrigger((prev) => prev + 1);
-  };
-
-  // Floor selection (smooth fly-to camera focus)
-  const handleSelectFloor = (floor: FloorData) => {
-    setSelectedFloor(floor);
   };
 
   // Purchase flow modal
@@ -65,7 +55,7 @@ export default function AppScreen() {
       id: `${arena.id}-floor-${nextFloorNumber}`,
       floorNumber: nextFloorNumber,
       arenaId: arena.id,
-      ownerName: null,
+      ownerName: currentUser?.name || null,
       brandTitle: null,
       tagline: 'New upper level — created after purchase',
       category: 'New Build Opportunity',
@@ -84,7 +74,7 @@ export default function AppScreen() {
     const updatedFloor: FloorData = {
       ...purchaseFloor,
       status: 'sold',
-      ownerName: 'UpSpace Member',
+      ownerName: currentUser?.name || currentUser?.email || 'UpSpace Member',
       brandTitle: campaign.title,
       tagline: campaign.targetUrl ? 'Interactive campaign live on UpSpace' : 'New campaign now live',
       category: 'Custom Campaign',
@@ -92,8 +82,7 @@ export default function AppScreen() {
       targetUrl: campaign.targetUrl || undefined,
     };
 
-    setFloors((current) => [...current, updatedFloor]);
-    setSelectedFloor(updatedFloor);
+    addFloor(updatedFloor);
   };
 
   const isDay = theme === 'day';
@@ -112,10 +101,13 @@ export default function AppScreen() {
           selectedFloor={selectedFloor}
           autoRotate={autoRotate}
           theme={theme}
-          onSelectFloor={handleSelectFloor}
+          lowPower={lowPower}
+          onSelectFloor={selectFloor}
           resetCameraTrigger={resetTrigger}
         />
       </div>
+
+      <CloudReveal />
 
       {/* 2. MINIMALIST GAME HUD OVERLAY */}
       <GameHUD
@@ -124,16 +116,19 @@ export default function AppScreen() {
         selectedFloor={selectedFloor}
         theme={theme}
         autoRotate={autoRotate}
-        onToggleTheme={handleToggleTheme}
-        onToggleAutoRotate={handleToggleAutoRotate}
+        lowPower={lowPower}
+        onToggleTheme={toggleTheme}
+        onToggleAutoRotate={toggleAutoRotate}
+        onToggleLowPower={toggleLowPower}
         onResetCamera={handleResetCamera}
-        onSelectFloor={handleSelectFloor}
+        onSelectFloor={selectFloor}
         onOpenPurchase={handleOpenPurchase}
       />
 
       {/* 3. PROTOTYPE ACQUISITION MODAL */}
       <PurchaseModal
         floor={purchaseFloor}
+        floors={floors}
         theme={theme}
         onClose={() => setPurchaseFloor(null)}
         onConfirm={handleConfirmPurchase}
