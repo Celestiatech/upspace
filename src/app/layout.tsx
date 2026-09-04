@@ -15,8 +15,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark scroll-smooth">
-      <body className="antialiased bg-transparent text-slate-100 overflow-x-hidden select-none">
+    <html lang="en" className="scroll-smooth">
+      <body className="antialiased bg-[#050814] text-slate-900 dark:text-slate-100 overflow-x-hidden select-none">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

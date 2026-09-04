@@ -5,14 +5,19 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import { ThemeMode } from '@/types/theme';
+import { FloorData } from '@/types/floor';
 import { Airplane } from './Airplane';
 
 interface CelestialSkyProps {
   theme: ThemeMode;
+  floors?: FloorData[];
+  altitude?: number;
 }
 
-export function CelestialSky({ theme }: CelestialSkyProps) {
+export function CelestialSky({ theme, floors = [], altitude }: CelestialSkyProps) {
   const isDay = theme === 'day';
+
+
   const cloudsRef = useRef<THREE.Group>(null);
 
   // Animate cloud drift
@@ -98,8 +103,10 @@ export function CelestialSky({ theme }: CelestialSkyProps) {
         />
       )}
 
-      {/* 3. COMMERCIAL / EXECUTIVE JET CRUISING HIGH IN THE SKY */}
-      <Airplane theme={theme} />
+      {/* 3. COMMERCIAL / EXECUTIVE JET CRUISING WITH TOP-RANKED SKY BANNER AT TOP FLOOR ALTITUDE */}
+      <Airplane theme={theme} floors={floors} altitude={altitude} />
+
+
 
       {/* 4. PROCEDURAL ATMOSPHERIC CLOUDS (Drifting in distance) */}
       <group ref={cloudsRef} position={[0, 36, 0]}>

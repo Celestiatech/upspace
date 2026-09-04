@@ -28,17 +28,20 @@ interface AppState {
   addFloor: (floor: FloorData) => void;
   selectFloor: (floor: FloorData | null) => void;
   resetFloors: () => void;
+  fetchFloorsFromApi: () => Promise<void>;
 
   // Scene & UI Settings
   theme: ThemeMode;
   autoRotate: boolean;
   zenMode: boolean;
   lowPower: boolean;
+  penthouseMusic: boolean;
   setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
   toggleAutoRotate: () => void;
   toggleZenMode: () => void;
   toggleLowPower: () => void;
+  togglePenthouseMusic: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -82,6 +85,23 @@ export const useAppStore = create<AppState>()(
           floors: updated,
           selectedFloor: newFloor,
         });
+
+        // Sync with backend API in background
+        try {
+          fetch('/api/floors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              floor: newFloor,
+              buyerName: newFloor.ownerName || 'Citizen',
+              bidAmount: newFloor.price,
+              targetUrl: newFloor.targetUrl,
+              brandTitle: newFloor.brandTitle,
+              bannerUrl: newFloor.adBannerUrl,
+              claimCode: newFloor.claimCode,
+            }),
+          }).catch((err) => console.warn('Background floor claim sync notice:', err));
+        } catch {}
       },
 
       selectFloor: (floor: FloorData | null) => set({ selectedFloor: floor }),
@@ -91,6 +111,20 @@ export const useAppStore = create<AppState>()(
         set({ floors: initial, selectedFloor: initial[0] || null });
       },
 
+      fetchFloorsFromApi: async () => {
+        try {
+          const res = await fetch(`/api/floors?arenaId=${CURRENT_ARENA.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.success && Array.isArray(data.floors) && data.floors.length > 0) {
+              set({ floors: data.floors });
+            }
+          }
+        } catch (err) {
+          console.warn('Could not fetch floors from API, using cached state:', err);
+        }
+      },
+
       // Theme & Camera UI Settings
       theme: 'day',
       autoRotate: true,
@@ -98,12 +132,14 @@ export const useAppStore = create<AppState>()(
       // Keep the complete scene available while making the default experience
       // comfortable on integrated graphics and lower-spec devices.
       lowPower: true,
+      penthouseMusic: false,
 
       setTheme: (theme: ThemeMode) => set({ theme }),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'day' ? 'night' : 'day' })),
       toggleAutoRotate: () => set((state) => ({ autoRotate: !state.autoRotate })),
       toggleZenMode: () => set((state) => ({ zenMode: !state.zenMode })),
       toggleLowPower: () => set((state) => ({ lowPower: !state.lowPower })),
+      togglePenthouseMusic: () => set((state) => ({ penthouseMusic: !state.penthouseMusic })),
     }),
     {
       name: 'upspace-app-storage', // key in localStorage
@@ -118,6 +154,7 @@ export const useAppStore = create<AppState>()(
           floors: saved.floors && saved.floors.length >= 8 ? saved.floors : showcaseFloors,
           theme: 'day',
           lowPower: true,
+          penthouseMusic: false,
         };
       },
       storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : ({} as any))),
@@ -128,6 +165,7 @@ export const useAppStore = create<AppState>()(
         autoRotate: state.autoRotate,
         zenMode: state.zenMode,
         lowPower: state.lowPower,
+        penthouseMusic: state.penthouseMusic,
       }),
     }
   )

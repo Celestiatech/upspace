@@ -18,35 +18,35 @@ export function HeightLadderModal({ floorCount, theme, onClose, onOpenPurchase }
   const currentHeight = comparison.currentHeight;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/60 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-950/65 backdrop-blur-md animate-fadeIn">
       <div
-        className={`relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl border shadow-2xl flex flex-col ${
+        className={`relative w-full max-w-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-hidden rounded-[1.8rem] sm:rounded-3xl border shadow-2xl flex flex-col ${
           isDay
             ? 'bg-white/95 border-slate-200/90 text-slate-900 shadow-slate-900/20'
             : 'bg-slate-900/95 border-slate-700/80 text-white shadow-cyan-950/40'
         }`}
       >
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-slate-200/60 dark:border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 flex items-center justify-center shadow-lg shadow-orange-500/20 text-white">
-              <Trophy className="w-5 h-5" />
+        <div className="p-4 sm:p-6 border-b border-slate-200/60 dark:border-white/10 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 flex items-center justify-center shadow-lg shadow-orange-500/20 text-white shrink-0">
+              <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-extrabold tracking-tight">Skyline Height Leaderboard</h2>
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h2 className="text-base sm:text-xl font-extrabold tracking-tight">Skyline Height Leaderboard</h2>
                 <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20">
                   Global Scale
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                 Compare UpSpace's elevation against the world's most famous monuments.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-white transition"
+            className="p-1.5 sm:p-2 rounded-xl sm:rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-white transition touch-manipulation"
           >
             <X className="w-5 h-5" />
           </button>
@@ -92,16 +92,29 @@ export function HeightLadderModal({ floorCount, theme, onClose, onOpenPurchase }
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="text-2xl sm:text-3xl select-none pt-0.5">{landmark.icon}</div>
+                  <div className="flex items-start gap-3.5">
+                    {/* Real Landmark Photograph */}
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 border border-slate-300 dark:border-white/15 shadow-md bg-slate-100 relative">
+                      <img
+                        src={landmark.imageUrl}
+                        alt={landmark.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      <div className="absolute top-1 left-1 w-5 h-5 rounded-md bg-black/40 backdrop-blur-sm flex items-center justify-center text-xs">
+                        {landmark.icon}
+                      </div>
+                    </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-sm sm:text-base leading-snug">{landmark.name}</h3>
-                        <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-300">
+                        <h3 className="font-black text-sm sm:text-base leading-snug text-slate-950 dark:text-white">
+                          {landmark.name}
+                        </h3>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-slate-200">
                           {landmark.location}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-1 line-clamp-2">
                         {landmark.description}
                       </p>
                     </div>

@@ -88,8 +88,8 @@ class FloorTexturePool {
     }
 
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 128;
+    canvas.width = 1024;
+    canvas.height = 256;
     const ctx = canvas.getContext('2d', { willReadFrequently: false });
     if (ctx) {
       drawFn(canvas, ctx);

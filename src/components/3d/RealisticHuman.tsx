@@ -12,7 +12,7 @@ export interface RealisticHumanProps {
   shirtColor?: string;
   height?: number;
   isDayMode?: boolean;
-  pose?: 'standing' | 'walking' | 'sitting';
+  pose?: 'standing' | 'walking' | 'sitting' | 'dancing' | 'cheering';
   skinTone?: string;
   hairColor?: string;
   headTilt?: number;
@@ -61,7 +61,7 @@ export function RealisticHuman({
 
   const pantColor = '#1e293b';
   const shoeColor = '#0f172a';
-  const legSwing = pose === 'walking' ? 0.5 : pose === 'sitting' ? 1.3 : 0.08;
+  const legSwing = pose === 'walking' ? 0.5 : pose === 'sitting' ? 1.3 : pose === 'dancing' ? 0.2 : 0.08;
 
   return (
     <group position={[0, HIPS + 0.06, 0]}>
@@ -99,14 +99,15 @@ export function RealisticHuman({
 
       {/* ---- LEGS ---- */}
       {[-1, 1].map((side) => {
-        const sw = pose === 'walking' ? side * legSwing : side * 0.03;
+        const sw = pose === 'walking' ? side * legSwing : pose === 'dancing' ? (side === 1 ? 0.15 : -0.1) : side * 0.03;
+        const sideSpread = pose === 'dancing' ? side * 0.09 : side * 0.07;
         return (
-          <group key={`leg-${side}`} position={[side * 0.07, 0, 0]}>
+          <group key={`leg-${side}`} position={[sideSpread, 0, 0]}>
             {/* Thigh */}
             <mesh
               geometry={SHARED_HUMAN_GEOMETRIES.thighCapsule}
               position={[0, LEG * 0.5 - HIPS, 0]}
-              rotation={[sw, 0, 0]}
+              rotation={[sw, 0, pose === 'dancing' ? side * 0.12 : 0]}
               castShadow
             >
               <meshStandardMaterial color={pantColor} roughness={0.75} />
@@ -115,7 +116,7 @@ export function RealisticHuman({
             <mesh
               geometry={SHARED_HUMAN_GEOMETRIES.calfCapsule}
               position={[0, LEG * 0.18 - HIPS, 0]}
-              rotation={[sw, 0, 0]}
+              rotation={[sw, 0, pose === 'dancing' ? side * 0.12 : 0]}
               castShadow
             >
               <meshStandardMaterial color={pantColor} roughness={0.75} />
@@ -124,7 +125,7 @@ export function RealisticHuman({
             <mesh
               geometry={SHARED_HUMAN_GEOMETRIES.shoeBox}
               position={[0.01, -HIPS - 0.02, 0.035]}
-              rotation={[sw, 0, 0]}
+              rotation={[sw, 0, pose === 'dancing' ? side * 0.12 : 0]}
               castShadow
             >
               <meshStandardMaterial color={shoeColor} roughness={0.6} />
@@ -134,25 +135,35 @@ export function RealisticHuman({
       })}
 
       {/* ---- ARMS ---- */}
-      {[-1, 1].map((side) => (
-        <group key={`arm-${side}`} position={[side * 0.12, HIPS + TORSO - 0.02, 0]} rotation={[0, 0, side * 0.06]}>
-          <mesh
-            geometry={SHARED_HUMAN_GEOMETRIES.armCapsule}
-            position={[side * 0.03, -ARM * 0.35, 0]}
-            rotation={[0, 0, side * 0.05]}
-            castShadow
+      {[-1, 1].map((side) => {
+        const isDancing = pose === 'dancing' || pose === 'cheering';
+        const armAngleZ = isDancing ? side * 2.3 : side * 0.06;
+        const armAngleX = isDancing ? (side === 1 ? 0.4 : -0.2) : 0;
+        const armOffsetY = isDancing ? 0.14 : -ARM * 0.35;
+        const handOffsetY = isDancing ? 0.32 : -ARM * 0.72;
+
+        return (
+          <group
+            key={`arm-${side}`}
+            position={[side * 0.12, HIPS + TORSO - 0.02, 0]}
+            rotation={[armAngleX, 0, armAngleZ]}
           >
-            <meshStandardMaterial color={shirtColor} roughness={0.7} />
-          </mesh>
-          <mesh
-            geometry={SHARED_HUMAN_GEOMETRIES.handSphere}
-            position={[side * 0.045, -ARM * 0.72, 0.01]}
-            rotation={[0, 0, side * 0.05]}
-          >
-            <meshStandardMaterial color={skin} roughness={0.6} />
-          </mesh>
-        </group>
-      ))}
+            <mesh
+              geometry={SHARED_HUMAN_GEOMETRIES.armCapsule}
+              position={[side * 0.03, armOffsetY, 0]}
+              castShadow
+            >
+              <meshStandardMaterial color={shirtColor} roughness={0.7} />
+            </mesh>
+            <mesh
+              geometry={SHARED_HUMAN_GEOMETRIES.handSphere}
+              position={[side * 0.045, handOffsetY, 0.01]}
+            >
+              <meshStandardMaterial color={skin} roughness={0.6} />
+            </mesh>
+          </group>
+        );
+      })}
     </group>
   );
 }

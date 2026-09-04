@@ -44,12 +44,12 @@ export function FloorDetailModal({
   const nextFloor = currentIndex < allFloors.length - 1 ? allFloors[currentIndex + 1] : null;
 
   return (
-    <div className="fixed top-20 right-4 sm:right-6 z-40 w-full max-w-sm animate-in fade-in slide-in-from-right-4 duration-200">
+    <div className="fixed top-16 sm:top-20 right-2 sm:right-6 left-2 sm:left-auto z-40 max-w-sm sm:w-80 w-auto animate-in fade-in slide-in-from-right-4 duration-200">
       <div
-        className={`backdrop-blur-2xl rounded-3xl p-5 shadow-2xl relative overflow-hidden transition-all border ${
+        className={`backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xl relative overflow-hidden transition-all border ${
           isDay
-            ? 'bg-white/90 border-slate-200/90 shadow-slate-400/30 text-slate-900'
-            : 'bg-slate-950/90 border-white/15 shadow-cyan-950/40 text-white'
+            ? 'bg-white/95 border-slate-200/90 shadow-slate-400/30 text-slate-900'
+            : 'bg-slate-950/95 border-white/15 shadow-cyan-950/40 text-white'
         }`}
       >
         

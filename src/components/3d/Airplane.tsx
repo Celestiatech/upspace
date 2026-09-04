@@ -4,37 +4,104 @@ import React, { useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { ThemeMode } from '@/types/theme';
+import { FloorData } from '@/types/floor';
 
 interface AirplaneProps {
   theme: ThemeMode;
+  floors?: FloorData[];
+  altitude?: number;
 }
 
-export function Airplane({ theme }: AirplaneProps) {
+export function Airplane({ theme, floors = [], altitude }: AirplaneProps) {
   const isDay = theme === 'day';
   const groupRef = useRef<THREE.Group>(null);
-  const strobeRef = useRef<THREE.PointLight>(null);
-  const strobeMeshRef = useRef<THREE.Mesh>(null);
-  const engineGlowLeftRef = useRef<THREE.MeshStandardMaterial>(null);
-  const engineGlowRightRef = useRef<THREE.MeshStandardMaterial>(null);
 
-  // Trailing contrails animation
-  const contrailLeftRef = useRef<THREE.Group>(null);
-  const contrailRightRef = useRef<THREE.Group>(null);
+  // Trailing flag / banner reference
+  const flagMeshRef = useRef<THREE.Mesh>(null);
 
-  // Flight path constants
-  const flightRadius = 68;
+  // Dynamic cruise altitude matching top floor / penthouse roof height
+  const topFloorAltitude = useMemo(() => {
+    if (altitude && altitude > 0) return altitude;
+    const count = floors?.length || 8;
+    return 12 + count * 4.5;
+  }, [altitude, floors]);
+
+  // Extract top-ranked floor / brand title
+  const topFloor = useMemo(() => {
+    if (!floors || floors.length === 0) return null;
+    return [...floors].sort((a, b) => b.price - a.price)[0] || floors[floors.length - 1];
+  }, [floors]);
+
+  const brandTitle = topFloor?.brandTitle || topFloor?.ownerName || 'W3Tech';
+  const brandPrice = topFloor?.price || 50000;
+
+  // Generate dynamic ultra-high-resolution texture for the sky banner flag (clearly visible from orbit)
+  const bannerTexture = useMemo(() => {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = 2048;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    // Glowing vibrant Amber/Gold-Orange gradient background
+    const grad = ctx.createLinearGradient(0, 0, 2048, 0);
+    grad.addColorStop(0, '#f59e0b');
+    grad.addColorStop(0.2, '#ea580c');
+    grad.addColorStop(0.5, '#d97706');
+    grad.addColorStop(0.8, '#ea580c');
+    grad.addColorStop(1, '#f59e0b');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 2048, 512);
+
+    // Thick crisp white outer border
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 18;
+    ctx.strokeRect(16, 16, 2016, 480);
+
+    // Inner gold pinstripe accent
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.6)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(32, 32, 1984, 448);
+
+    // Crown / Top Rank Badge Pill
+    ctx.fillStyle = '#fef08a';
+    ctx.font = '900 58px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('👑 #1 SKYLINE PINNACLE LEADER', 1024, 110);
+
+    // Giant Brand Name (Extra Bold & High-Contrast)
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 156px "Segoe UI", Inter, Arial, sans-serif';
+    const cleanName = brandTitle.length > 22 ? brandTitle.slice(0, 22) + '...' : brandTitle;
+    ctx.fillText(cleanName.toUpperCase(), 1024, 275);
+
+    // Live price telemetry badge pill
+    ctx.fillStyle = '#fef3c7';
+    ctx.font = 'bold 64px monospace';
+    ctx.fillText(`₹${brandPrice.toLocaleString()} · TOP BIDDER`, 1024, 415);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.needsUpdate = true;
+    return tex;
+  }, [brandTitle, brandPrice]);
+
+  // Flight path constants aligned with top floor level
+  const flightRadius = 54;
   const flightSpeed = 0.075;
-  const bankAngle = 0.26; // ~15 degrees inward banking for realistic turn
+  const bankAngle = 0.26; // Inward banking into the turn
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
 
     if (groupRef.current) {
       const angle = t * flightSpeed;
-      // Current position along wide circular orbit high in the sky
+      // Positioned along orbit matching top floor altitude
       const x = Math.sin(angle) * flightRadius;
       const z = Math.cos(angle) * flightRadius;
-      const y = 43 + Math.sin(t * 0.18) * 1.8; // Gentle cruising altitude wave
+      const y = topFloorAltitude + Math.sin(t * 0.18) * 0.8; // Cruising level with top floor
 
       groupRef.current.position.set(x, y, z);
 
@@ -42,42 +109,32 @@ export function Airplane({ theme }: AirplaneProps) {
       const nextAngle = (t + 0.1) * flightSpeed;
       const nextX = Math.sin(nextAngle) * flightRadius;
       const nextZ = Math.cos(nextAngle) * flightRadius;
-      const nextY = 43 + Math.sin((t + 0.1) * 0.18) * 1.8;
+      const nextY = topFloorAltitude + Math.sin((t + 0.1) * 0.18) * 0.8;
 
-      // Orient aircraft so the aerodynamic nose (-Z) points forward along velocity vector
+      // Orient aircraft towards flight vector and rotate shape 180 degrees to face forward
       groupRef.current.lookAt(nextX, nextY, nextZ);
+      groupRef.current.rotateY(Math.PI);
 
-      // Aerodynamic banking roll into the turn (left wing dips inward towards skyline tower)
+      // Aerodynamic banking roll into the turn
       groupRef.current.rotateZ(bankAngle);
     }
 
-    // Strobe light flashing (aviation double flash pattern)
-    const strobePhase = (t * 2.5) % 1;
-    const isStrobeActive = strobePhase < 0.08 || (strobePhase > 0.16 && strobePhase < 0.24);
-
-    if (strobeRef.current) {
-      strobeRef.current.intensity = isStrobeActive ? (isDay ? 6.0 : 8.0) : 0.0;
-    }
-    if (strobeMeshRef.current) {
-      (strobeMeshRef.current.material as THREE.MeshBasicMaterial).opacity = isStrobeActive ? 1.0 : 0.2;
-    }
-
-    // Engine turbine glow pulse
-    const engineIntensity = 0.85 + Math.sin(t * 12) * 0.15;
-    if (engineGlowLeftRef.current) {
-      engineGlowLeftRef.current.emissiveIntensity = engineIntensity;
-    }
-    if (engineGlowRightRef.current) {
-      engineGlowRightRef.current.emissiveIntensity = engineIntensity;
-    }
-
-    // Contrail subtle drift/vibration
-    if (contrailLeftRef.current && contrailRightRef.current) {
-      const puff = 1 + Math.sin(t * 6) * 0.05;
-      contrailLeftRef.current.scale.set(puff, puff, 1);
-      contrailRightRef.current.scale.set(puff, puff, 1);
+    // Animate large trailing banner cloth fluttering wave
+    if (flagMeshRef.current) {
+      const geo = flagMeshRef.current.geometry as THREE.PlaneGeometry;
+      const posAttr = geo.attributes.position;
+      for (let i = 0; i < posAttr.count; i++) {
+        const x = posAttr.getX(i);
+        // Wave starts at leading edge (x = -9.0) and intensifies towards trailing edge (x = +9.0)
+        const progress = (x + 9.0) / 18.0;
+        const wave = Math.sin(t * 9 - progress * 9) * 0.55 * Math.max(0.08, progress);
+        posAttr.setZ(i, wave);
+      }
+      posAttr.needsUpdate = true;
+      geo.computeVertexNormals();
     }
   });
+
 
   // Reusable window positions along passenger cabin
   const cabinWindows = useMemo(() => {
@@ -90,7 +147,9 @@ export function Airplane({ theme }: AirplaneProps) {
 
   return (
     <group ref={groupRef} position={[0, 43, 68]}>
+
       {/* ========================================================= */}
+
       {/* 1. AERODYNAMIC FUSELAGE (BODY, NOSE, COCKPIT & TAIL CONE) */}
       {/* ========================================================= */}
       {/* Main Cabin Tube (aligned along Z axis, nose at -Z, tail at +Z) */}
@@ -217,16 +276,6 @@ export function Airplane({ theme }: AirplaneProps) {
           <boxGeometry args={[0.05, 0.8, 0.65]} />
           <meshStandardMaterial color="#0284c7" metalness={0.8} roughness={0.25} />
         </mesh>
-        {/* Port Wingtip Navigation Light (RED - Solid) */}
-        <mesh position={[-4.9, 0.72, 0.1]}>
-          <sphereGeometry args={[0.08, 12, 12]} />
-          <meshBasicMaterial color="#ef4444" />
-        </mesh>
-        {/* Port Wingtip High-Intensity Strobe */}
-        <mesh position={[-4.9, 0.72, -0.2]}>
-          <sphereGeometry args={[0.06, 8, 8]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
       </group>
 
       {/* Right Wing (Swept back with symmetrical dihedral) */}
@@ -249,16 +298,6 @@ export function Airplane({ theme }: AirplaneProps) {
         <mesh position={[4.78, 0.38, 0]} rotation={[0, 0, 0.45]}>
           <boxGeometry args={[0.05, 0.8, 0.65]} />
           <meshStandardMaterial color="#0284c7" metalness={0.8} roughness={0.25} />
-        </mesh>
-        {/* Starboard Wingtip Navigation Light (GREEN - Solid) */}
-        <mesh position={[4.9, 0.72, 0.1]}>
-          <sphereGeometry args={[0.08, 12, 12]} />
-          <meshBasicMaterial color="#22c55e" />
-        </mesh>
-        {/* Starboard Wingtip High-Intensity Strobe */}
-        <mesh position={[4.9, 0.72, -0.2]}>
-          <sphereGeometry args={[0.06, 8, 8]} />
-          <meshBasicMaterial color="#ffffff" />
         </mesh>
       </group>
 
@@ -287,15 +326,10 @@ export function Airplane({ theme }: AirplaneProps) {
           <coneGeometry args={[0.09, 0.26, 16]} />
           <meshStandardMaterial color="#0f172a" metalness={0.9} roughness={0.2} />
         </mesh>
-        {/* Exhaust Nozzle & Afterburner/Core Glow */}
+        {/* Clean Titanium Exhaust Nozzle */}
         <mesh position={[0, 0, 0.7]} rotation={[-Math.PI / 2, 0, 0]}>
           <coneGeometry args={[0.24, 0.2, 16]} />
-          <meshStandardMaterial
-            ref={engineGlowLeftRef}
-            color="#f97316"
-            emissive="#ea580c"
-            emissiveIntensity={1.0}
-          />
+          <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.3} />
         </mesh>
       </group>
 
@@ -321,15 +355,10 @@ export function Airplane({ theme }: AirplaneProps) {
           <coneGeometry args={[0.09, 0.26, 16]} />
           <meshStandardMaterial color="#0f172a" metalness={0.9} roughness={0.2} />
         </mesh>
-        {/* Exhaust Nozzle & Afterburner/Core Glow */}
+        {/* Clean Titanium Exhaust Nozzle */}
         <mesh position={[0, 0, 0.7]} rotation={[-Math.PI / 2, 0, 0]}>
           <coneGeometry args={[0.24, 0.2, 16]} />
-          <meshStandardMaterial
-            ref={engineGlowRightRef}
-            color="#f97316"
-            emissive="#ea580c"
-            emissiveIntensity={1.0}
-          />
+          <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.3} />
         </mesh>
       </group>
 
@@ -351,11 +380,6 @@ export function Airplane({ theme }: AirplaneProps) {
           <cylinderGeometry args={[0.04, 0.04, 1.7, 8]} />
           <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.1} />
         </mesh>
-        {/* Top of Tail Fin Strobe Beacon */}
-        <mesh ref={strobeMeshRef} position={[0, 0.88, 0]}>
-          <sphereGeometry args={[0.08, 8, 8]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.3} />
-        </mesh>
       </group>
 
       {/* Horizontal Stabilizers (Tail Wings) */}
@@ -369,72 +393,47 @@ export function Airplane({ theme }: AirplaneProps) {
       </mesh>
 
       {/* ========================================================= */}
-      {/* 5. BEACONS & FLIGHT LIGHTING                               */}
+      {/* 5. TOP-RANKED BRAND AERIAL BANNER & TOW RIG               */}
       {/* ========================================================= */}
-      {/* Fuselage Dorsal Anti-Collision Red Beacon (Top) */}
-      <mesh position={[0, 0.44, -0.3]}>
-        <sphereGeometry args={[0.07, 8, 8]} />
-        <meshBasicMaterial color="#ef4444" />
-      </mesh>
-      {/* Fuselage Ventral Beacon (Belly) */}
-      <mesh position={[0, -0.44, 0.2]}>
-        <sphereGeometry args={[0.07, 8, 8]} />
-        <meshBasicMaterial color="#ef4444" />
-      </mesh>
+      <group position={[0, 0, 0]}>
+        {/* Upper Tow Cable */}
+        <mesh position={[0, 0.9, 4.7]} rotation={[0.46, 0, 0]}>
+          <cylinderGeometry args={[0.02, 0.02, 4.1, 6]} />
+          <meshStandardMaterial color="#cbd5e1" metalness={0.9} roughness={0.2} />
+        </mesh>
 
-      {/* High-Intensity Flash Strobe PointLight */}
-      <pointLight
-        ref={strobeRef}
-        position={[0, 1.85, 1.95]}
-        color="#ffffff"
-        distance={25}
-        intensity={4}
-      />
+        {/* Lower Tow Cable */}
+        <mesh position={[0, -0.9, 4.7]} rotation={[-0.46, 0, 0]}>
+          <cylinderGeometry args={[0.02, 0.02, 4.1, 6]} />
+          <meshStandardMaterial color="#cbd5e1" metalness={0.9} roughness={0.2} />
+        </mesh>
 
-      {/* ========================================================= */}
-      {/* 6. EXPANSIVE VAPOR CONTRAILS (JET STREAM TRAILS)          */}
-      {/* ========================================================= */}
-      {/* Left Engine Contrail Trail */}
-      <group ref={contrailLeftRef} position={[-1.75, -0.36, 1.0]}>
-        {[
-          { z: 2.2, len: 3.5, r1: 0.12, r2: 0.35, op: 0.45 },
-          { z: 6.8, len: 6.0, r1: 0.35, r2: 0.75, op: 0.3 },
-          { z: 14.5, len: 9.5, r1: 0.75, r2: 1.35, op: 0.15 },
-          { z: 25.5, len: 12.5, r1: 1.35, r2: 2.1, op: 0.06 },
-        ].map((seg, i) => (
-          <mesh key={`c-left-${i}`} position={[0, 0, seg.z]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[seg.r2, seg.r1, seg.len, 12, 1, true]} />
-            <meshBasicMaterial
-              color={isDay ? '#ffffff' : '#94a3b8'}
-              transparent
-              opacity={seg.op * (isDay ? 1 : 0.65)}
-              depthWrite={false}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        ))}
+        {/* Vertical Banner Spreader Bar Rod */}
+        <mesh position={[0, 0, 6.5]}>
+          <cylinderGeometry args={[0.045, 0.045, 3.8, 8]} />
+          <meshStandardMaterial color="#475569" metalness={0.95} roughness={0.1} />
+        </mesh>
+
+        {/* Dynamic Waving Cloth Banner Flag (Large High-Visibility 18m x 3.6m) */}
+        {bannerTexture && (
+          <group position={[0, 0, 15.5]} rotation={[0, -Math.PI / 2, 0]}>
+            <mesh ref={flagMeshRef} castShadow receiveShadow>
+              <planeGeometry args={[18.0, 3.6, 36, 6]} />
+              <meshStandardMaterial
+                map={bannerTexture}
+                roughness={0.35}
+                metalness={0.1}
+                side={THREE.DoubleSide}
+                emissive="#ffffff"
+                emissiveMap={bannerTexture}
+                emissiveIntensity={isDay ? 0.5 : 0.9}
+              />
+            </mesh>
+          </group>
+        )}
       </group>
 
-      {/* Right Engine Contrail Trail */}
-      <group ref={contrailRightRef} position={[1.75, -0.36, 1.0]}>
-        {[
-          { z: 2.2, len: 3.5, r1: 0.12, r2: 0.35, op: 0.45 },
-          { z: 6.8, len: 6.0, r1: 0.35, r2: 0.75, op: 0.3 },
-          { z: 14.5, len: 9.5, r1: 0.75, r2: 1.35, op: 0.15 },
-          { z: 25.5, len: 12.5, r1: 1.35, r2: 2.1, op: 0.06 },
-        ].map((seg, i) => (
-          <mesh key={`c-right-${i}`} position={[0, 0, seg.z]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[seg.r2, seg.r1, seg.len, 12, 1, true]} />
-            <meshBasicMaterial
-              color={isDay ? '#ffffff' : '#94a3b8'}
-              transparent
-              opacity={seg.op * (isDay ? 1 : 0.65)}
-              depthWrite={false}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        ))}
-      </group>
     </group>
   );
 }
+

@@ -54,8 +54,10 @@ export function BuildingStructure({
 
   return (
     <group position={[0, 0, 0]}>
-      {/* 1. CELESTIAL BACKGROUND: SUN, MOON WITH CRATERS, AIRPLANE, DRIFTING CLOUDS */}
-      <CelestialSky theme={isDayMode ? 'day' : 'night'} />
+      {/* 1. CELESTIAL BACKGROUND: SUN, MOON WITH CRATERS, AIRPLANE WITH TOP BRAND BANNER, DRIFTING CLOUDS */}
+      <CelestialSky theme={isDayMode ? 'day' : 'night'} floors={floors} altitude={roofY} />
+
+
 
       {/* 2. PLAZA ENVIRONMENT & PEDESTRIANS FOR REALISTIC HUMAN SCALE */}
       <CityEnvironment theme={isDayMode ? 'day' : 'night'} />
@@ -87,9 +89,6 @@ export function BuildingStructure({
         // Floor 10 acts as a realistic mid-tower mechanical / service floor
         const isMechanicalFloor = floor.floorNumber === 10;
 
-        // The top floor directly beneath the rooftop terrace has no glass curtain wall
-        const isTopFloor = index === totalFloors - 1;
-
         return (
           <React.Fragment key={floor.id}>
             <FloorMesh
@@ -104,8 +103,8 @@ export function BuildingStructure({
               hasSelection={!!selectedFloor}
               themeColor={themeColor}
               isDayMode={isDayMode}
-              hideGlass={isTopFloor}
-              hideAdvertising={isTopFloor}
+              hideGlass={false}
+              hideAdvertising={false}
               onSelect={onSelectFloor}
               onHover={onHoverFloor}
             />
@@ -132,6 +131,7 @@ export function BuildingStructure({
         roofY={roofY}
         themeColor={themeColor}
         isDayMode={isDayMode}
+        floors={floors}
       />
     </group>
   );

@@ -9,77 +9,104 @@ const SIDE_PILL_BG = ['#22c9b8', '#7cc0f2', '#a8e063', '#ff9b7d', '#8fbfe0', '#f
 
 import { floorTexturePool } from '@/utils/threeMemory';
 
+function fillRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
 function drawSideSignCanvas(floor: FloorData, index: number, totalFloors: number, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
-  const w = canvas.width; // 512
-  const h = canvas.height; // 128
+  const w = canvas.width; // 1024
+  const h = canvas.height; // 256
 
   const bg = floor.bannerColor || SIDE_PILL_BG[index % SIDE_PILL_BG.length];
 
-  // 1. Solid bright square background
+  // 1. Solid bright background
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 
   // 2. Soft inner highlight
   const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, 'rgba(255,255,255,0.35)');
-  grad.addColorStop(0.5, 'rgba(255,255,255,0.06)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.12)');
+  grad.addColorStop(0, 'rgba(255,255,255,0.42)');
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.08)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.14)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
-  // 3. Square company logo icon on the left
+  // 3. Left Company logo icon (x: 24 to 168)
   const logoX = 24;
-  const logoSize = 68;
-  const logoY = h / 2 - logoSize / 2;
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.fillRect(logoX, logoY, logoSize, logoSize);
+  const logoSize = 144;
+  const logoY = Math.round(h / 2 - logoSize / 2);
+  
+  ctx.fillStyle = 'rgba(255,255,255,0.96)';
+  fillRoundedRect(ctx, logoX, logoY, logoSize, logoSize, 20);
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(15,23,42,0.12)';
+  ctx.stroke();
 
   const brand = floor.brandTitle || (floor.status === 'available' ? 'AVAILABLE' : 'YOUR BRAND');
   const initial = (brand.charAt(0) || 'U').toUpperCase();
   ctx.fillStyle = bg;
-  ctx.font = '800 42px "Segoe UI", Arial, sans-serif';
+  ctx.font = '900 86px "Segoe UI", Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(initial, logoX + logoSize / 2, logoY + logoSize / 2 + 3);
+  ctx.fillText(initial, logoX + logoSize / 2, logoY + logoSize / 2 + 4);
 
-  // 4. Domain / brand name
-  ctx.fillStyle = '#111827';
-  ctx.font = '800 42px "Segoe UI", Arial, sans-serif';
+  // 4. Middle Column: Domain / brand name & category (x: 192 to 670, max width 470px)
+  const brandX = 192;
+  const brandY = Math.round(h / 2 - 36);
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 74px "Segoe UI", Arial, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  const brandX = logoX + logoSize + 20;
-  const brandY = h / 2 - 14;
-  ctx.fillText(brand.length > 16 ? brand.slice(0, 16) : brand, brandX, brandY, 280);
+  const brandText = brand.length > 16 ? brand.slice(0, 16) + '…' : brand;
+  ctx.fillText(brandText, brandX, brandY, 470);
 
   // 5. Category sub-line
-  ctx.fillStyle = 'rgba(17,24,39,0.78)';
-  ctx.font = '600 22px "Segoe UI", Arial, sans-serif';
-  ctx.fillText(floor.category || (floor.status === 'available' ? 'Prime Commercial Space' : 'Brand Presence'), brandX, h / 2 + 24, 280);
+  const catY = Math.round(h / 2 + 42);
+  ctx.fillStyle = 'rgba(15,23,42,0.85)';
+  ctx.font = '800 42px "Segoe UI", Arial, sans-serif';
+  const catText = floor.category || (floor.status === 'available' ? 'Prime Commercial Space' : 'Brand Presence');
+  const displayCat = catText.length > 20 ? catText.slice(0, 20) + '…' : catText;
+  ctx.fillText(displayCat, brandX, catY, 470);
 
-  // 6. Floor badge overlay (bottom-right)
+  // 6. Right Column: Top Price Tag (right aligned at x = 996)
+  const price = `₹${floor.price.toLocaleString()}`;
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 66px "Segoe UI", Arial, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(price, 996, brandY);
+
+  // 7. Right Column: Large, Prominent #Rank Badge Pill (bottom-right under price)
   const displayNum = getDisplayFloorNumber(floor.floorNumber, totalFloors);
   const badge = `#${displayNum}`;
-  const badgeW = 76;
-  const badgeH = 34;
-  const bx = w - 128;
-  const by = h - 45;
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.fillRect(bx - badgeW / 2, by - badgeH / 2, badgeW, badgeH);
-  ctx.lineWidth = 2.5;
-  ctx.strokeStyle = 'rgba(30,41,59,0.75)';
+  const badgeW = 210;
+  const badgeH = 82;
+  const badgeX = 996 - badgeW;
+  const badgeY = Math.round(h / 2 + 2);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.96)';
+  fillRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, 16);
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(15,23,42,0.25)';
   ctx.stroke();
-  ctx.fillStyle = '#111827';
-  ctx.font = '800 26px "Segoe UI", Arial, sans-serif';
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 54px "Segoe UI", Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(badge, bx + 3, by + 1);
-
-  // 7. Bid amount tag
-  const price = `₹${floor.price}`;
-  ctx.fillStyle = '#111827';
-  ctx.font = '800 30px "Segoe UI", Arial, sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText(price, w - 38, h / 2 - 2);
+  ctx.fillText(badge, badgeX + badgeW / 2, badgeY + badgeH / 2 + 2);
 }
 
 interface MultiSidedAdvertisingProps {

@@ -12,12 +12,12 @@ export function InfoModal({ type, onClose }: InfoModalProps) {
   if (!type) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-slate-950/70 animate-in fade-in duration-200">
-      <div className="glass-panel w-full max-w-lg rounded-2xl p-6 sm:p-8 text-white animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 backdrop-blur-md bg-slate-950/70 animate-in fade-in duration-200">
+      <div className="glass-panel w-full max-w-lg rounded-[1.8rem] sm:rounded-2xl p-4 sm:p-8 text-white animate-in zoom-in-95 duration-200 max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto custom-scrollbar relative">
         
         <button
           onClick={onClose}
-          className="icon-button absolute top-5 right-5"
+          className="icon-button absolute top-3.5 right-3.5 sm:top-5 sm:right-5 touch-manipulation"
           aria-label="Close dialog"
         >
           <X className="w-5 h-5" />

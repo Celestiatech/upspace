@@ -11,7 +11,10 @@ import { CloudReveal } from '@/components/ui/CloudReveal';
 import { FloorDetailDrawer } from '@/components/floors/FloorDetailDrawer';
 import { FloorDirectory } from '@/components/floors/FloorDirectory';
 import { ActivityFeedModal } from '@/components/ui/ActivityFeedModal';
+import { UserProfileModal } from '@/components/ui/UserProfileModal';
+import { AuthModal } from '@/components/auth/AuthModal';
 import { useAppStore } from '@/store/useAppStore';
+import { penthouseAudio } from '@/utils/penthouseAudio';
 import { X, HelpCircle } from 'lucide-react';
 
 export default function AppScreen() {
@@ -23,11 +26,14 @@ export default function AppScreen() {
   const theme = useAppStore((state) => state.theme);
   const autoRotate = useAppStore((state) => state.autoRotate);
   const lowPower = useAppStore((state) => state.lowPower);
+  const penthouseMusic = useAppStore((state) => state.penthouseMusic);
   const addFloor = useAppStore((state) => state.addFloor);
   const selectFloor = useAppStore((state) => state.selectFloor);
   const toggleTheme = useAppStore((state) => state.toggleTheme);
   const toggleAutoRotate = useAppStore((state) => state.toggleAutoRotate);
   const toggleLowPower = useAppStore((state) => state.toggleLowPower);
+  const togglePenthouseMusic = useAppStore((state) => state.togglePenthouseMusic);
+  const fetchFloorsFromApi = useAppStore((state) => state.fetchFloorsFromApi);
   const currentUser = useAppStore((state) => state.user);
 
   // View mode: '3d' spatial canvas or 'directory' 2D table
@@ -39,6 +45,13 @@ export default function AppScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+  // Fetch live arena floors from Supabase / API
+  useEffect(() => {
+    fetchFloorsFromApi();
+  }, [fetchFloorsFromApi]);
 
   // Set default selected floor on initial load if null
   useEffect(() => {
@@ -46,6 +59,26 @@ export default function AppScreen() {
       selectFloor(floors[0]);
     }
   }, [selectedFloor, floors, selectFloor]);
+
+  // Synchronize documentElement dark mode class with application theme ('night' mode)
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (theme === 'night') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, [theme]);
+
+  // Penthouse Ambient Lounge Music Audio Controller
+  useEffect(() => {
+    if (penthouseMusic) {
+      penthouseAudio.play();
+    } else {
+      penthouseAudio.pause();
+    }
+  }, [penthouseMusic]);
 
   // Reset camera view to ground floor
   const handleResetCamera = () => {
@@ -57,12 +90,19 @@ export default function AppScreen() {
   };
 
   // Purchase flow modal
-  const handleOpenPurchase = (floorToClaim?: FloorData) => {
+  const handleOpenPurchase = (floorToClaim?: FloorData, initialUrl?: string) => {
     if (floorToClaim) {
       setPurchaseFloor(
         floorToClaim.status === 'sold'
-          ? { ...floorToClaim, price: Math.ceil(floorToClaim.price * 1.1) }
-          : floorToClaim
+          ? {
+              ...floorToClaim,
+              targetUrl: initialUrl || floorToClaim.targetUrl,
+              price: Math.ceil(floorToClaim.price * 1.1),
+            }
+          : {
+              ...floorToClaim,
+              targetUrl: initialUrl || floorToClaim.targetUrl,
+            }
       );
       return;
     }
@@ -77,6 +117,7 @@ export default function AppScreen() {
       arenaId: arena.id,
       ownerName: currentUser?.name || null,
       brandTitle: null,
+      targetUrl: initialUrl || undefined,
       tagline: `Pinnacle Level ${nextDisplayNum} — Elevated skyline billboard`,
       category: 'Pinnacle Build Opportunity',
       status: 'available',
@@ -149,11 +190,15 @@ export default function AppScreen() {
         floors={floors}
         theme={theme}
         viewMode={viewMode}
+        penthouseMusic={penthouseMusic}
+        onTogglePenthouseMusic={togglePenthouseMusic}
         onToggleViewMode={() => setViewMode(viewMode === '3d' ? 'directory' : '3d')}
         onToggleTheme={toggleTheme}
         onOpenHowItWorks={() => setRulesOpen(true)}
         onOpenActivityFeed={() => setActivityModalOpen(true)}
         onOpenGetFloor={() => handleOpenPurchase()}
+        onOpenAuth={() => setAuthModalOpen(true)}
+        onOpenProfile={() => setProfileModalOpen(true)}
       />
 
       {/* 2. FULL-SCREEN 3D WORLD CANVAS (Active in 3D Mode) */}
@@ -197,7 +242,9 @@ export default function AppScreen() {
 
       {/* 4. 2D DIRECTORY & LEADERBOARD VIEW (Active in Directory Mode) */}
       {viewMode === 'directory' && (
-        <div className="relative z-10 w-full h-full overflow-y-auto custom-scrollbar">
+        <div className={`relative z-10 w-full h-full overflow-y-auto custom-scrollbar ${
+          isDay ? 'bg-slate-100 text-slate-950' : 'bg-[#060a17] text-white'
+        }`}>
           <FloorDirectory
             floors={floors}
             theme={theme}
@@ -227,46 +274,68 @@ export default function AppScreen() {
         />
       )}
 
-      {/* 7. RULES & HOW IT WORKS MODAL */}
+      {/* 7. CITIZEN USER PROFILE MODAL */}
+      {profileModalOpen && (
+        <UserProfileModal
+          theme={theme}
+          floors={floors}
+          onClose={() => setProfileModalOpen(false)}
+          onSelectFloor={handleSelectFloor}
+          onOpenBuild={() => handleOpenPurchase()}
+        />
+      )}
+
+      {/* 8. SIGN IN & SIGN UP AUTH MODAL */}
+      {authModalOpen && (
+        <AuthModal
+          theme={theme}
+          onClose={() => setAuthModalOpen(false)}
+          onSuccess={() => {
+            setAuthModalOpen(false);
+          }}
+        />
+      )}
+
+      {/* 9. RULES & HOW IT WORKS MODAL */}
       {rulesOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-          <section className={`w-full max-w-md rounded-3xl p-6 border shadow-2xl ${
-            isDay ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-white/15 text-white'
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/65 backdrop-blur-md animate-in fade-in duration-200">
+          <section className={`w-full max-w-md rounded-[1.8rem] sm:rounded-3xl p-4 sm:p-6 border shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto custom-scrollbar ${
+            isDay ? 'bg-white border-slate-200 text-slate-900 shadow-slate-900/20' : 'bg-slate-950 border-white/15 text-white shadow-black/80'
           }`}>
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/10">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                  Transparency & Rules
+                <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                  Transparency &amp; Rules
                 </p>
-                <h2 className="mt-1 text-2xl font-black tracking-tight">How UpSpace Works</h2>
+                <h2 className="mt-0.5 text-xl sm:text-2xl font-black tracking-tight">How UpSpace Works</h2>
               </div>
               <button
                 onClick={() => setRulesOpen(false)}
-                className="p-1.5 rounded-full border border-slate-200 dark:border-white/10 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition"
+                className="p-1.5 sm:p-2 rounded-xl sm:rounded-full border border-slate-200 dark:border-white/10 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition touch-manipulation"
                 aria-label="Close rules"
               >
                 <X size={18} />
               </button>
             </div>
-            <ol className="mt-5 space-y-3.5 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            <ol className="mt-4 space-y-3 text-xs sm:text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               <li>
                 <b className="text-slate-900 dark:text-white">1. Select a Level.</b> Click any floor in 3D orbit or the 2D directory to inspect live impressions, clicks, domain verification, and lease time.
               </li>
               <li>
-                <b className="text-slate-900 dark:text-white">2. Place Your Campaign.</b> Provide your destination URL, brand title, and custom billboard banner. All URLs undergo automated SSL & malware screening.
+                <b className="text-slate-900 dark:text-white">2. Place Your Campaign.</b> Provide your destination URL, brand title, and custom billboard banner. All URLs undergo automated SSL &amp; malware screening.
               </li>
               <li>
                 <b className="text-slate-900 dark:text-white">3. 7-Day Protected Lease.</b> Your level is protected for 7 days. Higher bids bump elevation and unlock exclusive high-altitude billboards.
               </li>
             </ol>
-            <div className="mt-5 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 text-xs text-orange-700 dark:text-orange-300">
+            <div className="mt-4 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 text-xs text-orange-700 dark:text-orange-300 font-medium text-center">
               All impressions and clicks are verified telemetry—never fabricated metrics.
             </div>
           </section>
         </div>
       )}
 
-      {/* 9. CAMPAIGN CHECKOUT & ACQUISITION MODAL */}
+      {/* 10. CAMPAIGN CHECKOUT & ACQUISITION MODAL */}
       <PurchaseModal
         floor={purchaseFloor}
         floors={floors}
