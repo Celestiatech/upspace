@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Record verified transaction in Supabase
+    // Record verified transaction in Supabase & dispatch email notification
     try {
       const supabase = createClient();
       await supabase.from('transactions').insert({
@@ -64,6 +64,53 @@ export async function POST(request: Request) {
         razorpay_signature: razorpaySignature,
         status: 'completed',
       });
+
+      // Dispatch automated Order & Placement Confirmation Email
+      const recipientEmail = body?.buyerEmail || process.env.MAIL_FROM_ADDRESS;
+      if (recipientEmail) {
+        const { sendEmail } = await import('@/utils/email/sender');
+        const { getOrderConfirmationHtml, getOutbidAlertHtml } = await import('@/utils/email/templates');
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://upspace.live';
+        const displayLevel = Number(body?.displayLevel) || 1;
+
+        // 1. Order Receipt Email
+        const receiptHtml = getOrderConfirmationHtml({
+          buyerName,
+          brandTitle,
+          targetUrl: targetUrl || siteUrl,
+          displayLevel,
+          amount: Number(amount),
+          paymentId: razorpayPaymentId,
+          orderId: razorpayOrderId,
+          claimCode: body?.claimCode || `UPS-${Math.random().toString(36).slice(2, 8).toUpperCase()}-L${displayLevel}`,
+          siteUrl,
+        });
+
+        sendEmail({
+          to: recipientEmail,
+          subject: `🎉 Payment Confirmed: Level #${displayLevel} (${brandTitle}) is Live on UpSpace!`,
+          html: receiptHtml,
+        }).catch((err) => console.warn('[Email Notice]', err));
+
+        // 2. Check and notify previous outbid floor owner if outbidding occurred
+        if (body?.previousOwnerEmail && body?.previousOwnerEmail !== recipientEmail) {
+          const outbidHtml = getOutbidAlertHtml({
+            buyerName: body?.previousOwnerName || 'Citizen',
+            brandTitle: body?.previousBrandTitle || 'Previous Sponsor',
+            currentLevel: displayLevel - 1,
+            newTopLevel: displayLevel,
+            newTopBidder: brandTitle,
+            nextRequiredBid: Math.ceil(Number(amount) * 1.1),
+            siteUrl,
+          });
+
+          sendEmail({
+            to: body.previousOwnerEmail,
+            subject: `⚠️ Skyline Alert: You were outbid by ${brandTitle}!`,
+            html: outbidHtml,
+          }).catch((err) => console.warn('[Outbid Email Notice]', err));
+        }
+      }
     } catch (dbErr) {
       console.warn('Database transaction log notice:', dbErr);
     }

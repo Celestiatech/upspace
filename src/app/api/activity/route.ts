@@ -11,7 +11,7 @@ export async function GET() {
         .order('created_at', { ascending: false })
         .limit(30);
 
-      if (!error && transactions && transactions.length > 0) {
+      if (!error && Array.isArray(transactions)) {
         const formattedActivity = transactions.map((tx: any) => ({
           id: tx.id,
           type: 'claim',
@@ -30,61 +30,8 @@ export async function GET() {
       console.warn('Supabase activity fetch fallback:', dbErr);
     }
 
-    // Default showcase activity feed
-    const defaultActivities = [
-      {
-        id: 'act-1',
-        type: 'claim',
-        title: 'Pinnacle Ventures outbid Penthouse Level 8',
-        detail: 'Acquired top floor billboard for ₹50,000 · "W3Tech"',
-        amount: 50000,
-        timestamp: '2 mins ago',
-        status: 'completed',
-        txHash: 'rzp_pay_94827104',
-      },
-      {
-        id: 'act-2',
-        type: 'claim',
-        title: 'OpenAI activated Level 7 Campaign',
-        detail: 'Acquired billboard for ₹40,000 · "Sora Video AI"',
-        amount: 40000,
-        timestamp: '18 mins ago',
-        status: 'completed',
-        txHash: 'rzp_pay_83920194',
-      },
-      {
-        id: 'act-3',
-        type: 'bid',
-        title: 'Anthropic Labs outbid Level 6',
-        detail: 'New top bid of ₹35,000 for "Claude AI 3.7"',
-        amount: 35000,
-        timestamp: '1 hour ago',
-        status: 'completed',
-        txHash: 'rzp_pay_74829104',
-      },
-      {
-        id: 'act-4',
-        type: 'claim',
-        title: 'Linear Team secured Level 5',
-        detail: 'Acquired billboard for ₹30,000 · "Linear App"',
-        amount: 30000,
-        timestamp: '3 hours ago',
-        status: 'completed',
-        txHash: 'rzp_pay_63829102',
-      },
-      {
-        id: 'act-5',
-        type: 'claim',
-        title: 'Resend Team renewed Level 4',
-        detail: 'Retained 7-day billboard lease for ₹25,000',
-        amount: 25000,
-        timestamp: '5 hours ago',
-        status: 'completed',
-        txHash: 'rzp_pay_52918293',
-      },
-    ];
-
-    return NextResponse.json({ success: true, activities: defaultActivities, source: 'local_showcase' });
+    // Default empty activity feed
+    return NextResponse.json({ success: true, activities: [], source: 'empty_db' });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error?.message || 'Failed to fetch activity feed' },

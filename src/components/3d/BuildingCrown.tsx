@@ -391,6 +391,20 @@ export function BuildingCrown({ topWidth, topDepth, roofY, isDayMode = false, fl
   const topBrandPrice = topFloor?.price ? `₹${topFloor.price.toLocaleString('en-IN')}` : '₹50,000';
   const topBrandTagline = topFloor?.tagline || 'PINNACLE SKYLINE LEADER';
 
+  // Dynamic font sizing for billboard text to ensure long strings (e.g. SHOPIFYTHEMEDOWNLOADER) never overflow
+  const topBrandFontSize = useMemo(() => {
+    const len = topBrandTitle.length || 1;
+    // Available billboard width is ~4.4 units
+    // Standard bold characters take ~0.60 * fontSize in width
+    return Math.min(0.54, Math.max(0.18, 4.4 / (len * 0.60)));
+  }, [topBrandTitle]);
+
+  const topBottomText = `${topBrandPrice} · ${topBrandTagline.toUpperCase().slice(0, 36)}`;
+  const topBottomFontSize = useMemo(() => {
+    const len = topBottomText.length || 1;
+    return Math.min(0.19, Math.max(0.11, 4.5 / (len * 0.55)));
+  }, [topBottomText]);
+
   const helicopterX = 1.15;
   const helicopterZ = 0.05;
   const helicopterHoverY = 2.45;
@@ -557,16 +571,43 @@ export function BuildingCrown({ topWidth, topDepth, roofY, isDayMode = false, fl
             <meshStandardMaterial color="#060c18" roughness={0.2} metalness={0.5} />
           </mesh>
           {/* Front Golden Rank Crown Pill */}
-          <Text position={[0, 2.15, 0.15]} fontSize={0.21} color="#f59e0b" anchorX="center" anchorY="middle" fontWeight="bold">
+          <Text
+            position={[0, 2.15, 0.15]}
+            fontSize={0.21}
+            color="#f59e0b"
+            anchorX="center"
+            anchorY="middle"
+            fontWeight="bold"
+            maxWidth={4.6}
+            textAlign="center"
+          >
             👑 #1 TOP RANKED BRAND
           </Text>
           {/* Front Main Brand Title */}
-          <Text position={[0, 1.62, 0.15]} fontSize={0.56} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="bold">
+          <Text
+            position={[0, 1.62, 0.15]}
+            fontSize={topBrandFontSize}
+            color="#ffffff"
+            anchorX="center"
+            anchorY="middle"
+            fontWeight="bold"
+            maxWidth={4.6}
+            textAlign="center"
+          >
             {topBrandTitle.toUpperCase()}
           </Text>
           {/* Front Price & Tagline */}
-          <Text position={[0, 1.08, 0.15]} fontSize={0.19} color="#38bdf8" anchorX="center" anchorY="middle" fontWeight="bold">
-            {`${topBrandPrice} · ${topBrandTagline.toUpperCase().slice(0, 32)}`}
+          <Text
+            position={[0, 1.08, 0.15]}
+            fontSize={topBottomFontSize}
+            color="#38bdf8"
+            anchorX="center"
+            anchorY="middle"
+            fontWeight="bold"
+            maxWidth={4.6}
+            textAlign="center"
+          >
+            {topBottomText}
           </Text>
 
           {/* BACK DISPLAY: TOP RANK BRAND */}
@@ -574,14 +615,44 @@ export function BuildingCrown({ topWidth, topDepth, roofY, isDayMode = false, fl
             <planeGeometry args={[4.95, 1.85]} />
             <meshStandardMaterial color="#060c18" roughness={0.2} metalness={0.5} />
           </mesh>
-          <Text position={[0, 2.15, -0.15]} rotation={[0, Math.PI, 0]} fontSize={0.21} color="#f59e0b" anchorX="center" anchorY="middle" fontWeight="bold">
+          <Text
+            position={[0, 2.15, -0.15]}
+            rotation={[0, Math.PI, 0]}
+            fontSize={0.21}
+            color="#f59e0b"
+            anchorX="center"
+            anchorY="middle"
+            fontWeight="bold"
+            maxWidth={4.6}
+            textAlign="center"
+          >
             👑 #1 TOP RANKED BRAND
           </Text>
-          <Text position={[0, 1.62, -0.15]} rotation={[0, Math.PI, 0]} fontSize={0.56} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="bold">
+          <Text
+            position={[0, 1.62, -0.15]}
+            rotation={[0, Math.PI, 0]}
+            fontSize={topBrandFontSize}
+            color="#ffffff"
+            anchorX="center"
+            anchorY="middle"
+            fontWeight="bold"
+            maxWidth={4.6}
+            textAlign="center"
+          >
             {topBrandTitle.toUpperCase()}
           </Text>
-          <Text position={[0, 1.08, -0.15]} rotation={[0, Math.PI, 0]} fontSize={0.19} color="#38bdf8" anchorX="center" anchorY="middle" fontWeight="bold">
-            {`${topBrandPrice} · ${topBrandTagline.toUpperCase().slice(0, 32)}`}
+          <Text
+            position={[0, 1.08, -0.15]}
+            rotation={[0, Math.PI, 0]}
+            fontSize={topBottomFontSize}
+            color="#38bdf8"
+            anchorX="center"
+            anchorY="middle"
+            fontWeight="bold"
+            maxWidth={4.6}
+            textAlign="center"
+          >
+            {topBottomText}
           </Text>
         </group>
 
@@ -631,13 +702,13 @@ export function BuildingCrown({ topWidth, topDepth, roofY, isDayMode = false, fl
             <planeGeometry args={[4.38, 1.25]} />
             <meshStandardMaterial color="#051020" roughness={0.2} metalness={0.6} />
           </mesh>
-          <Text position={[0, 1.68, 0.12]} fontSize={0.17} color="#38bdf8" anchorX="center" anchorY="middle" fontWeight="bold">
+          <Text position={[0, 1.68, 0.12]} fontSize={0.17} color="#38bdf8" anchorX="center" anchorY="middle" fontWeight="bold" maxWidth={4.2} textAlign="center">
             🌐 3D VIRTUAL ADVERTISING SKYLINE
           </Text>
-          <Text position={[0, 1.28, 0.12]} fontSize={0.54} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="bold">
+          <Text position={[0, 1.28, 0.12]} fontSize={0.54} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="bold" maxWidth={4.2} textAlign="center">
             UpSpace
           </Text>
-          <Text position={[0, 0.88, 0.12]} fontSize={0.18} color="#facc15" anchorX="center" anchorY="middle" fontWeight="bold">
+          <Text position={[0, 0.88, 0.12]} fontSize={0.18} color="#facc15" anchorX="center" anchorY="middle" fontWeight="bold" maxWidth={4.2} textAlign="center">
             CLAIM YOUR FLOOR ON THE SKYLINE
           </Text>
 
@@ -646,13 +717,13 @@ export function BuildingCrown({ topWidth, topDepth, roofY, isDayMode = false, fl
             <planeGeometry args={[4.38, 1.25]} />
             <meshStandardMaterial color="#051020" roughness={0.2} metalness={0.6} />
           </mesh>
-          <Text position={[0, 1.68, -0.12]} rotation={[0, Math.PI, 0]} fontSize={0.17} color="#38bdf8" anchorX="center" anchorY="middle" fontWeight="bold">
+          <Text position={[0, 1.68, -0.12]} rotation={[0, Math.PI, 0]} fontSize={0.17} color="#38bdf8" anchorX="center" anchorY="middle" fontWeight="bold" maxWidth={4.2} textAlign="center">
             🌐 3D VIRTUAL ADVERTISING SKYLINE
           </Text>
-          <Text position={[0, 1.28, -0.12]} rotation={[0, Math.PI, 0]} fontSize={0.54} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="bold">
+          <Text position={[0, 1.28, -0.12]} rotation={[0, Math.PI, 0]} fontSize={0.54} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="bold" maxWidth={4.2} textAlign="center">
             UpSpace
           </Text>
-          <Text position={[0, 0.88, -0.12]} rotation={[0, Math.PI, 0]} fontSize={0.18} color="#facc15" anchorX="center" anchorY="middle" fontWeight="bold">
+          <Text position={[0, 0.88, -0.12]} rotation={[0, Math.PI, 0]} fontSize={0.18} color="#facc15" anchorX="center" anchorY="middle" fontWeight="bold" maxWidth={4.2} textAlign="center">
             CLAIM YOUR FLOOR ON THE SKYLINE
           </Text>
         </group>

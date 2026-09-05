@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { FloorData, getDisplayFloorNumber, isPenthouseFloor } from '@/types/floor';
 import { ThemeMode } from '@/types/theme';
+import { getFloorLogoUrl } from '@/utils/logoHelper';
 
 interface FloorDirectoryProps {
   floors: FloorData[];
@@ -242,20 +243,32 @@ export function FloorDirectory({
               <th className="py-4 px-4">Elevation</th>
               <th className="py-4 px-4">Brand / Sponsor</th>
               <th className="py-4 px-4 hidden md:table-cell">Category</th>
-              <th className="py-4 px-4 hidden lg:table-cell">Weekly Impressions</th>
-              <th className="py-4 px-4 hidden sm:table-cell">Clicks Delivered</th>
+              <th className="py-4 px-4 hidden lg:table-cell">Floor Clicks</th>
+              <th className="py-4 px-4 hidden sm:table-cell">Visited Website</th>
               <th className="py-4 px-4 text-right">Current Value</th>
               <th className="py-4 px-4 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-white/5 font-bold">
-            {filteredFloors.map((floor) => {
+            {filteredFloors.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Box className="w-8 h-8 text-slate-400" />
+                    <span className="font-bold text-sm">No floors currently in database</span>
+                    <span className="text-xs text-slate-400 font-normal">Floors will appear as they are added or provisioned.</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredFloors.map((floor) => {
               const displayNum = getDisplayFloorNumber(floor.floorNumber, floors.length);
               const isPenthouse = isPenthouseFloor(floor.floorNumber, floors.length);
               const nextBid = Math.ceil(floor.price * 1.1);
               const domain = floor.targetUrl
                 ? floor.targetUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '')
                 : floor.brandTitle || 'upspace.city';
+              const logoSrc = getFloorLogoUrl(floor);
 
               return (
                 <tr
@@ -292,10 +305,22 @@ export function FloorDirectory({
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-2.5">
                       <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-white text-xs shrink-0 shadow-sm"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-white text-xs shrink-0 shadow-sm relative overflow-hidden"
                         style={{ backgroundColor: floor.bannerColor || '#0284c7' }}
                       >
-                        {floor.brandTitle ? floor.brandTitle.charAt(0).toUpperCase() : 'U'}
+                        <span className="font-black">
+                          {floor.brandTitle ? floor.brandTitle.charAt(0).toUpperCase() : 'U'}
+                        </span>
+                        {logoSrc && (
+                          <img
+                            src={logoSrc}
+                            alt={floor.brandTitle || 'Logo'}
+                            className="absolute inset-0 w-full h-full object-contain p-1 bg-inherit rounded-lg"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        )}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -320,19 +345,19 @@ export function FloorDirectory({
                     </span>
                   </td>
 
-                  {/* IMPRESSIONS */}
-                  <td className="py-4 px-4 hidden lg:table-cell font-mono font-black text-slate-950 dark:text-white">
+                  {/* FLOOR CLICKS */}
+                  <td className="py-4 px-4 hidden lg:table-cell font-mono font-black text-blue-700 dark:text-cyan-400">
                     <div className="flex items-center gap-1.5">
-                      <Eye className="w-3.5 h-3.5 text-slate-800 dark:text-cyan-400" />
-                      <span>{((floor.impressionsWeekly || 140000) / 1000).toFixed(0)}k/wk</span>
+                      <MousePointerClick className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
+                      <span>{((floor.floorClicks ?? floor.impressionsWeekly) || 0).toLocaleString()}</span>
                     </div>
                   </td>
 
-                  {/* CLICKS */}
+                  {/* VISITED WEBSITE */}
                   <td className="py-4 px-4 hidden sm:table-cell font-mono font-black text-emerald-800 dark:text-emerald-400">
                     <div className="flex items-center gap-1.5">
-                      <MousePointerClick className="w-3.5 h-3.5" />
-                      <span>{(floor.clicksDelivered || 2150).toLocaleString()}</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>{((floor.websiteVisits ?? floor.clicksDelivered) || 0).toLocaleString()}</span>
                     </div>
                   </td>
 
@@ -348,12 +373,12 @@ export function FloorDirectory({
                       className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-sm transition active:scale-95 touch-manipulation"
                     >
                       <Sparkles className="w-3 h-3" />
-                      <span>Outbid (₹{nextBid.toLocaleString()})</span>
+                      <span>Claim Level #{floors.length + 1} (₹{nextBid.toLocaleString()})</span>
                     </button>
                   </td>
                 </tr>
               );
-            })}
+            }))}
           </tbody>
         </table>
       </div>
@@ -364,7 +389,7 @@ export function FloorDirectory({
           <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <span>All UpSpace Billboard Submissions Undergo Automated SSL &amp; Anti-Malware Verification</span>
         </div>
-        No adult, scam, phishing, or malicious websites permitted. Standard 7-day retention cycle with outbid protection.
+        No adult, scam, phishing, or malicious websites permitted. All levels feature permanent lifetime placement on the UpSpace skyline.
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { getFloorsForArena } from '@/data/floors';
 import { CURRENT_ARENA } from '@/data/arenas';
 import { FloorData } from '@/types/floor';
 
@@ -18,35 +17,52 @@ export async function GET(request: Request) {
         .eq('arena_id', arenaId)
         .order('floor_number', { ascending: true });
 
-      if (!error && data && data.length > 0) {
-        const formattedFloors: FloorData[] = data.map((row: any) => ({
-          id: row.id,
-          floorNumber: row.floor_number,
-          arenaId: row.arena_id,
-          ownerName: row.owner_name,
-          brandTitle: row.brand_title,
-          tagline: row.tagline,
-          category: row.category,
-          status: row.status,
-          price: Number(row.price),
-          currency: row.currency || 'INR',
-          dimensions: row.dimensions || '360° Panoramic Digital Wrap & Spire Halo',
-          impressionsPerDay: row.impressions_per_day || '100K+ Views',
-          elevationMeters: Number(row.elevation_meters),
-          logoUrl: row.logo_url,
-          adBannerUrl: row.ad_banner_url,
-          targetUrl: row.target_url,
-          bannerColor: row.banner_color,
-          claimCode: row.claim_code,
-          verifiedDomain: row.verified_domain,
-          verifiedType: row.verified_type,
-          safetyScanPassed: row.safety_scan_passed,
-          impressionsWeekly: row.impressions_weekly,
-          clicksDelivered: row.clicks_delivered,
-          ctr: Number(row.ctr),
-          daysHeld: row.days_held,
-          leaseExpiryDays: row.lease_expiry_days,
-        }));
+      if (!error && Array.isArray(data)) {
+        const formattedFloors: FloorData[] = data.map((row: any) => {
+          const rawImp = Number(row.impressions_weekly) || 0;
+          const rawClk = Number(row.clicks_delivered) || 0;
+          const isLegacyDummy = rawImp === 145000 || rawImp === 140000 || rawImp === 120000 || rawClk === 1890 || rawClk === 2150 || rawClk === 1650;
+          const websiteVisits = isLegacyDummy ? 0 : rawClk;
+          const floorClicks = isLegacyDummy ? 0 : Math.max(rawImp, websiteVisits, 1);
+          const impressionsWeekly = floorClicks;
+          const ctr = floorClicks > 0 ? Number(((websiteVisits / floorClicks) * 100).toFixed(1)) : 0;
+
+          if (row.id && (isLegacyDummy || rawImp < floorClicks)) {
+            supabase.from('floors').update({ impressions_weekly: floorClicks, clicks_delivered: websiteVisits, ctr }).eq('id', row.id).then(() => {});
+          }
+
+          return {
+            id: row.id,
+            floorNumber: row.floor_number,
+            arenaId: row.arena_id,
+            ownerName: row.owner_name,
+            brandTitle: row.brand_title,
+            tagline: row.tagline,
+            category: row.category,
+            status: row.status,
+            price: Number(row.price),
+            currency: row.currency || 'INR',
+            dimensions: row.dimensions || '360° Panoramic Digital Wrap & Spire Halo',
+            impressionsPerDay: row.impressions_per_day || '100K+ Views',
+            elevationMeters: Number(row.elevation_meters),
+            logoUrl: row.logo_url,
+            adBannerUrl: row.ad_banner_url,
+            targetUrl: row.target_url,
+            bannerColor: row.banner_color,
+            claimCode: row.claim_code,
+            verifiedDomain: row.verified_domain,
+            verifiedType: row.verified_type,
+            impressionsWeekly,
+            clicksDelivered: websiteVisits,
+            floorClicks,
+            websiteVisits,
+            ctr,
+            daysHeld: row.days_held || 0,
+            leaseExpiryDays: row.lease_expiry_days || 7,
+            createdAt: row.created_at || row.updated_at,
+            updatedAt: row.updated_at,
+          };
+        });
 
         return NextResponse.json({ success: true, floors: formattedFloors, source: 'supabase' });
       }
@@ -54,9 +70,8 @@ export async function GET(request: Request) {
       console.warn('Supabase fetch failed, serving default showcase floors:', dbErr);
     }
 
-    // Default showcase floors fallback
-    const showcaseFloors = getFloorsForArena(arenaId);
-    return NextResponse.json({ success: true, floors: showcaseFloors, source: 'local_showcase' });
+    // Default fallback only if database connection failed
+    return NextResponse.json({ success: true, floors: [], source: 'empty_db' });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error?.message || 'Failed to fetch floors' },
@@ -74,7 +89,7 @@ export async function POST(request: Request) {
       body = {};
     }
 
-    const { floor, buyerName, ownerName, bidAmount, targetUrl, brandTitle, bannerUrl, claimCode, paymentId } = body;
+    const { floor, buyerName, ownerName, bidAmount, targetUrl, brandTitle, bannerUrl, claimCode, paymentId, category } = body;
     const resolvedBuyer = buyerName || ownerName || brandTitle || floor?.ownerName || 'Citizen';
 
     // Validate and sanitize targetUrl
@@ -83,21 +98,45 @@ export async function POST(request: Request) {
       formattedUrl = `https://${formattedUrl}`;
     }
 
-    const floorId = floor?.id || `neo-tokyo-floor-${Date.now()}`;
-    const floorNumber = typeof floor?.floorNumber === 'number' ? floor.floorNumber : 0;
     const arenaId = floor?.arenaId || CURRENT_ARENA.id;
-    const finalBid = Number(bidAmount) || Number(floor?.price) || 10000;
+    const finalBid = Number(bidAmount) || Number(floor?.price) || 1;
+    let floorNumber = typeof floor?.floorNumber === 'number' ? floor.floorNumber : 0;
+    let floorId = floor?.id || `${arenaId}-floor-${Date.now()}`;
+
+    try {
+      const supabase = createClient();
+      const { data: existingFloor } = await supabase
+        .from('floors')
+        .select('id')
+        .eq('id', floorId)
+        .maybeSingle();
+
+      if (!existingFloor) {
+        const { data: maxRows } = await supabase
+          .from('floors')
+          .select('floor_number')
+          .eq('arena_id', arenaId)
+          .order('floor_number', { ascending: false })
+          .limit(1);
+
+        if (maxRows && maxRows.length > 0) {
+          floorNumber = Math.max(floorNumber, maxRows[0].floor_number + 1);
+        }
+      }
+    } catch {}
+
+    const elevation = CURRENT_ARENA.baseHeight + floorNumber * CURRENT_ARENA.floorHeight + CURRENT_ARENA.floorHeight / 2;
 
     const updatedFloor: FloorData = {
       ...(floor || {}),
       id: floorId,
       arenaId,
       floorNumber,
-      category: floor?.category || 'Custom Campaign',
+      category: category || floor?.category || 'Custom Campaign',
       currency: floor?.currency || 'INR',
       dimensions: floor?.dimensions || '360° Panoramic Digital Wrap & Spire Halo',
       impressionsPerDay: floor?.impressionsPerDay || '100K+ Views',
-      elevationMeters: floor?.elevationMeters || 50,
+      elevationMeters: elevation,
       status: 'sold',
       ownerName: resolvedBuyer,
       brandTitle: brandTitle || resolvedBuyer,
@@ -108,11 +147,13 @@ export async function POST(request: Request) {
       verifiedDomain: true,
       verifiedType: 'indie',
       safetyScanPassed: true,
-      impressionsWeekly: 145000,
-      clicksDelivered: 1890,
-      ctr: 15.4,
-      daysHeld: 1,
+      impressionsWeekly: floor?.impressionsWeekly || 0,
+      clicksDelivered: floor?.clicksDelivered || 0,
+      ctr: floor?.ctr || 0,
+      daysHeld: 0,
       leaseExpiryDays: 7,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       bidHistory: [
         {
           bidder: resolvedBuyer,
@@ -208,12 +249,11 @@ export async function DELETE(request: Request) {
       console.warn('Supabase floor wipe notice:', dbErr);
     }
 
-    // Return fresh clean list of available floors
-    const cleanFloors = getFloorsForArena(arenaId);
+    // Return empty list of floors since all floors were cleared
     return NextResponse.json({
       success: true,
       message: 'All floors and transactions cleared from database successfully.',
-      floors: cleanFloors,
+      floors: [],
     });
   } catch (error: any) {
     return NextResponse.json(

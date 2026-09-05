@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { FloorData, getDisplayFloorNumber, isPenthouseFloor } from '@/types/floor';
 import { ThemeMode } from '@/types/theme';
+import { getFloorLogoUrl } from '@/utils/logoHelper';
 
 interface FloorDetailDrawerProps {
   floor: FloorData | null;
@@ -40,6 +41,14 @@ export function FloorDetailDrawer({
   onOpenPurchase,
 }: FloorDetailDrawerProps) {
   const [activeTab, setActiveTab] = useState<'analytics' | 'history'>('analytics');
+  const [liveWebsiteVisits, setLiveWebsiteVisits] = useState<number | null>(null);
+  const [liveFloorClicks, setLiveFloorClicks] = useState<number | null>(null);
+
+  // Sync / reset live counts when floor changes
+  React.useEffect(() => {
+    setLiveWebsiteVisits(null);
+    setLiveFloorClicks(null);
+  }, [floor?.id]);
 
   if (!floor || !isOpen) return null;
 
@@ -53,11 +62,51 @@ export function FloorDetailDrawer({
   const nextFloor = currentIndex < allFloors.length - 1 ? allFloors[currentIndex + 1] : null;
 
   const nextBid = Math.ceil(floor.price * 1.1);
-  const weeklyImpressions = floor.impressionsWeekly || 140000;
-  const clicks = floor.clicksDelivered || 2150;
-  const ctr = floor.ctr || 15.4;
-  const daysHeld = floor.daysHeld || 3;
-  const leaseDaysRemaining = floor.leaseExpiryDays || 4;
+
+  // Real dynamic telemetry calculations from DB timestamps & live counts
+  const now = Date.now();
+  const createdTime = floor.createdAt
+    ? new Date(floor.createdAt).getTime()
+    : floor.updatedAt
+    ? new Date(floor.updatedAt).getTime()
+    : now;
+
+  const elapsedMs = Math.max(0, now - createdTime);
+  const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
+  const elapsedDays = Math.floor(elapsedHours / 24);
+
+  const timeHeldText = elapsedDays === 0
+    ? `${Math.max(1, elapsedHours)} ${elapsedHours <= 1 ? 'hour' : 'hours'}`
+    : `${elapsedDays} ${elapsedDays === 1 ? 'day' : 'days'}`;
+
+  const rawClk = floor.websiteVisits ?? floor.clicksDelivered ?? 0;
+  const rawImp = floor.floorClicks ?? floor.impressionsWeekly ?? 0;
+  const isLegacyDummy = rawImp === 145000 || rawImp === 140000 || rawImp === 120000 || rawClk === 1890 || rawClk === 2150 || rawClk === 1650;
+  
+  const baseWebsiteVisits = isLegacyDummy ? 0 : rawClk;
+  const baseFloorClicks = isLegacyDummy ? 0 : Math.max(rawImp, baseWebsiteVisits, 1);
+
+  const websiteVisits = liveWebsiteVisits !== null ? liveWebsiteVisits : baseWebsiteVisits;
+  const floorClicks = liveFloorClicks !== null ? Math.max(liveFloorClicks, websiteVisits) : Math.max(baseFloorClicks, websiteVisits, 1);
+  const weeklyImpressions = floorClicks;
+  const ctr = floorClicks > 0 ? Number(((websiteVisits / floorClicks) * 100).toFixed(1)) : 0;
+
+  const formatImpressions = (val: number) => {
+    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `${(val / 1000).toFixed(1)}k`;
+    return `${val}`;
+  };
+
+  const handleTrackWebsiteVisit = () => {
+    setLiveWebsiteVisits((prev) => (prev !== null ? prev + 1 : baseWebsiteVisits + 1));
+    try {
+      fetch('/api/floors/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ floorId: floor.id, action: 'website_visit' }),
+      }).catch(() => {});
+    } catch {}
+  };
 
   const domain = floor.targetUrl ? floor.targetUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : floor.brandTitle || 'upspace.city';
 
@@ -130,10 +179,22 @@ export function FloorDetailDrawer({
         }`}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-white text-lg shadow-md"
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-white text-lg shadow-md relative overflow-hidden shrink-0"
                 style={{ backgroundColor: floor.bannerColor || '#0284c7' }}
               >
-                {floor.brandTitle ? floor.brandTitle.charAt(0).toUpperCase() : 'U'}
+                <span className="font-black">
+                  {floor.brandTitle ? floor.brandTitle.charAt(0).toUpperCase() : 'U'}
+                </span>
+                {getFloorLogoUrl(floor) && (
+                  <img
+                    src={getFloorLogoUrl(floor)!}
+                    alt={floor.brandTitle || 'Logo'}
+                    className="absolute inset-0 w-full h-full object-contain p-1.5 bg-inherit rounded-xl"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                )}
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -151,6 +212,7 @@ export function FloorDetailDrawer({
                     href={floor.targetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={handleTrackWebsiteVisit}
                     className="inline-flex items-center gap-1 text-xs font-mono font-bold text-slate-900 dark:text-cyan-400 hover:underline mt-0.5"
                   >
                     <span>{domain}</span>
@@ -180,6 +242,29 @@ export function FloorDetailDrawer({
             <p className="mt-3 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-bold">
               "{floor.tagline}"
             </p>
+          )}
+
+          {/* VISIT WEBSITE ACTION BUTTON */}
+          {floor.targetUrl && (
+            <a
+              href={floor.targetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleTrackWebsiteVisit}
+              className={`mt-3 flex items-center justify-between px-3.5 py-2 rounded-xl border text-xs font-bold transition group shadow-sm ${
+                isDay
+                  ? 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100/70 text-cyan-950'
+                  : 'bg-cyan-500/10 border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ExternalLink className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform" />
+                <span>Visit Official Website</span>
+              </div>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-900 dark:text-cyan-200">
+                {websiteVisits} visits
+              </span>
+            </a>
           )}
 
           {/* SECURITY & SAFETY DISCLOSURE */}
@@ -221,31 +306,32 @@ export function FloorDetailDrawer({
         {/* TAB 1: PROOF OF EYEBALLS TELEMETRY */}
         {activeTab === 'analytics' ? (
           <div className="space-y-3">
+            {/* 3 PRIMARY METRICS: FLOOR CLICKS, VISITED WEBSITE, CTR */}
             <div className="grid grid-cols-3 gap-2">
               <div className={`p-3 rounded-xl border text-center ${
                 isDay ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.03] border-white/10'
               }`}>
                 <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold text-slate-700 dark:text-slate-300">
-                  <Eye className="w-3.5 h-3.5 text-slate-800 dark:text-cyan-400" />
-                  <span>Weekly</span>
+                  <MousePointerClick className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
+                  <span>Floor Clicks</span>
                 </div>
-                <div className="mt-1 font-mono font-black text-sm sm:text-base text-slate-950 dark:text-white">
-                  {(weeklyImpressions / 1000).toFixed(0)}k
+                <div className="mt-1 font-mono font-black text-sm sm:text-base text-blue-700 dark:text-cyan-400">
+                  {floorClicks.toLocaleString()}
                 </div>
-                <div className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Impressions</div>
+                <div className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Tower Views</div>
               </div>
 
               <div className={`p-3 rounded-xl border text-center ${
                 isDay ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.03] border-white/10'
               }`}>
                 <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold text-slate-700 dark:text-slate-300">
-                  <MousePointerClick className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Clicks</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Visited Website</span>
                 </div>
                 <div className="mt-1 font-mono font-black text-sm sm:text-base text-emerald-700 dark:text-emerald-400">
-                  {clicks.toLocaleString()}
+                  {websiteVisits.toLocaleString()}
                 </div>
-                <div className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Delivered</div>
+                <div className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Outbound Visits</div>
               </div>
 
               <div className={`p-3 rounded-xl border text-center ${
@@ -256,24 +342,40 @@ export function FloorDetailDrawer({
                   <span>CTR</span>
                 </div>
                 <div className="mt-1 font-mono font-black text-sm sm:text-base text-orange-700 dark:text-orange-400">
-                  {ctr}%
+                  {ctr.toFixed(1)}%
                 </div>
                 <div className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Conversion</div>
               </div>
             </div>
 
-            {/* LEASE & RETENTION STATUS */}
+            {/* EYEBALL IMPRESSIONS BADGE */}
+            <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+              isDay ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-white/[0.03] border-white/10 text-white'
+            }`}>
+              <div className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <div>
+                  <span className="font-black text-slate-950 dark:text-white">Estimated Impressions:</span>{' '}
+                  <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{formatImpressions(weeklyImpressions)} Weekly Eyeballs</span>
+                </div>
+              </div>
+              <div className="text-[10px] font-mono text-purple-700 dark:text-purple-400 font-black uppercase">
+                Live Reach
+              </div>
+            </div>
+
+            {/* PERMANENT OWNERSHIP STATUS */}
             <div className={`p-3.5 rounded-xl border flex items-center justify-between text-xs ${
               isDay ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-white/[0.03] border-white/10 text-white'
             }`}>
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-slate-700 dark:text-slate-400" />
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <div>
-                  <span className="font-black text-slate-950 dark:text-white">{daysHeld} days</span> held by current sponsor
+                  <span className="font-black text-slate-950 dark:text-white">Permanent Placement</span> · Active for {timeHeldText}
                 </div>
               </div>
-              <div className="text-xs font-mono text-cyan-800 dark:text-cyan-400 font-black">
-                {leaseDaysRemaining}d remaining
+              <div className="text-xs font-mono text-emerald-700 dark:text-emerald-400 font-black">
+                Lifetime Active
               </div>
             </div>
 
@@ -290,8 +392,8 @@ export function FloorDetailDrawer({
                 <span className="font-mono font-black text-slate-950 dark:text-white">+{floor.elevationMeters.toFixed(1)}m from ground</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-600 dark:text-slate-400">Content Policy:</span>
-                <span className="text-emerald-700 dark:text-emerald-400 font-black">Auto-moderated &amp; safe</span>
+                <span className="font-bold text-slate-600 dark:text-slate-400">Ownership:</span>
+                <span className="text-emerald-700 dark:text-emerald-400 font-black">Permanent Lifetime</span>
               </div>
             </div>
           </div>
@@ -328,7 +430,7 @@ export function FloorDetailDrawer({
               ))
             ) : (
               <div className="p-4 rounded-xl border text-center text-xs font-bold text-slate-700 dark:text-slate-300 border-dashed border-slate-300 dark:border-white/10">
-                Initial listing bid of ₹{floor.price.toLocaleString()} placed upon launch.
+                No active bids placed on this level yet.
               </div>
             )}
           </div>
@@ -342,7 +444,7 @@ export function FloorDetailDrawer({
         <div className="flex items-center justify-between">
           <div>
             <span className="text-[10px] uppercase font-black tracking-wider text-slate-700 dark:text-slate-300">
-              Current Floor Value
+              Floor Price
             </span>
             <div className="font-mono font-black text-xl text-slate-950 dark:text-white">
               ₹{floor.price.toLocaleString()}
@@ -350,7 +452,7 @@ export function FloorDetailDrawer({
           </div>
           <div className="text-right">
             <span className="text-[10px] uppercase font-black tracking-wider text-orange-700 dark:text-orange-400">
-              Next Min Bid (+10%)
+              Next Top Level Price
             </span>
             <div className="font-mono font-black text-xl text-orange-700 dark:text-orange-400">
               ₹{nextBid.toLocaleString()}
@@ -363,11 +465,11 @@ export function FloorDetailDrawer({
           className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-500/25 transition active:scale-[0.98] flex items-center justify-center gap-2"
         >
           <Sparkles className="w-4 h-4" />
-          <span>Outbid &amp; Claim Level {displayNum} (₹{nextBid.toLocaleString()})</span>
+          <span>Claim Next Top Level #{allFloors.length + 1} (₹{nextBid.toLocaleString()})</span>
         </button>
 
         <p className="text-[11px] font-bold text-center text-slate-700 dark:text-slate-300">
-          7-Day sponsored billboard cycle · Guaranteed impressions
+          Permanent Lifetime Placement · Stacks on top of building
         </p>
       </div>
     </aside>

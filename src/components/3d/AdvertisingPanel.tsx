@@ -35,6 +35,7 @@ function pickPillColor(floor: FloorData, index: number): string {
 }
 
 import { floorTexturePool } from '@/utils/threeMemory';
+import { getFloorLogoUrl } from '@/utils/logoHelper';
 
 function fillRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -49,6 +50,8 @@ function fillRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w:
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
 }
+
+const logoImageCache = new Map<string, HTMLImageElement>();
 
 function drawAdCanvas(floor: FloorData, daymode: boolean, index: number, totalFloors: number, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
   const w = canvas.width; // 1024
@@ -81,30 +84,78 @@ function drawAdCanvas(floor: FloorData, daymode: boolean, index: number, totalFl
   ctx.stroke();
 
   const brand = floor.brandTitle || (floor.status === 'available' ? 'AVAILABLE' : 'YOUR BRAND');
-  const initial = (brand.charAt(0) || 'U').toUpperCase();
-  ctx.fillStyle = bg;
-  ctx.font = '900 86px "Segoe UI", Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(initial, logoX + logoSize / 2, logoY + logoSize / 2 + 4);
+  const logoUrl = getFloorLogoUrl(floor);
 
-  // 4. Middle Column: Domain / brand name & category (x: 192 to 670, max width 470px)
+  let drewImage = false;
+  if (logoUrl) {
+    const cached = logoImageCache.get(logoUrl);
+    if (cached && cached.complete && cached.naturalWidth > 0) {
+      const pad = 16;
+      ctx.save();
+      ctx.beginPath();
+      fillRoundedRect(ctx, logoX + 2, logoY + 2, logoSize - 4, logoSize - 4, 18);
+      ctx.clip();
+      ctx.drawImage(cached, logoX + pad, logoY + pad, logoSize - pad * 2, logoSize - pad * 2);
+      ctx.restore();
+      drewImage = true;
+    } else if (!cached && typeof window !== 'undefined') {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        logoImageCache.set(logoUrl, img);
+        drawAdCanvas(floor, daymode, index, totalFloors, canvas, ctx);
+        const tex = (canvas as any).__texture;
+        if (tex) {
+          tex.needsUpdate = true;
+        }
+      };
+      img.onerror = () => {
+        // Keep letter fallback
+      };
+      img.src = logoUrl;
+      logoImageCache.set(logoUrl, img);
+    }
+  }
+
+  if (!drewImage) {
+    const initial = (brand.charAt(0) || 'U').toUpperCase();
+    ctx.fillStyle = bg;
+    ctx.font = '900 86px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(initial, logoX + logoSize / 2, logoY + logoSize / 2 + 4);
+  }
+
+  // 4. Middle Column: Domain / brand name & category (x: 192 to 740, max width 550px)
   const brandX = 192;
   const brandY = Math.round(h / 2 - 36);
+
+  // Exact measurement-based font auto-scaling to fit ANY long brand name cleanly without squeezing
+  const maxBrandWidth = 540;
+  let fontSize = 74;
+  ctx.font = `900 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+  while (ctx.measureText(brand).width > maxBrandWidth && fontSize > 28) {
+    fontSize -= 2;
+    ctx.font = `900 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+  }
+
   ctx.fillStyle = '#0f172a';
-  ctx.font = '900 74px "Segoe UI", Arial, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  const brandText = brand.length > 16 ? brand.slice(0, 16) + '…' : brand;
-  ctx.fillText(brandText, brandX, brandY, 470);
+  ctx.fillText(brand, brandX, brandY);
 
-  // 5. Category sub-line
+  // 5. Category sub-line with auto font scaling
   const catY = Math.round(h / 2 + 42);
-  ctx.fillStyle = 'rgba(15,23,42,0.85)';
-  ctx.font = '800 42px "Segoe UI", Arial, sans-serif';
   const catText = floor.category || (floor.status === 'available' ? 'Prime Commercial Space' : 'Brand Presence');
-  const displayCat = catText.length > 20 ? catText.slice(0, 20) + '…' : catText;
-  ctx.fillText(displayCat, brandX, catY, 470);
+  const maxCatWidth = 540;
+  let catFontSize = 42;
+  ctx.font = `800 ${catFontSize}px "Segoe UI", Arial, sans-serif`;
+  while (ctx.measureText(catText).width > maxCatWidth && catFontSize > 24) {
+    catFontSize -= 2;
+    ctx.font = `800 ${catFontSize}px "Segoe UI", Arial, sans-serif`;
+  }
+  ctx.fillStyle = 'rgba(15,23,42,0.85)';
+  ctx.fillText(catText, brandX, catY);
 
   // 6. Right Column: Top Price Tag (right aligned at x = 996)
   const price = `₹${floor.price.toLocaleString()}`;
@@ -161,7 +212,7 @@ export function AdvertisingPanel({
   const signHeight = height * 0.78;
 
   // Optimized lightweight 512x128 texture from pool
-  const textureKey = `ad-${floor.id}-${floor.brandTitle}-${floor.price}-${isDayMode}`;
+  const textureKey = `ad-${floor.id}-${floor.brandTitle}-${floor.category}-${floor.adBannerUrl}-${floor.price}-${isDayMode}`;
   const adTexture = useMemo(() => {
     const index = Math.abs(floor.floorNumber) + (floor.floorNumber * 7) % PILL_BG.length;
     return floorTexturePool.getOrCreate(textureKey, (canvas, ctx) => {
@@ -198,6 +249,13 @@ export function AdvertisingPanel({
   const handleAdClick = (event: any) => {
     if (!floor.targetUrl) return;
     event.stopPropagation();
+    try {
+      fetch('/api/floors/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ floorId: floor.id, action: 'click' }),
+      }).catch(() => {});
+    } catch {}
     try {
       const destination = new URL(floor.targetUrl);
       if (destination.protocol === 'https:' || destination.protocol === 'http:') {

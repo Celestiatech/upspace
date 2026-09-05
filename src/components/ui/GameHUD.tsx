@@ -31,9 +31,12 @@ export function GameHUD({
   onOpenHowItWorks,
 }: GameHUDProps) {
   const isDay = theme === 'day';
-  const topFloor = [...floors].sort((a, b) => b.floorNumber - a.floorNumber)[0];
-  const topBid = topFloor ? Math.ceil(topFloor.price * 1.1) : 8999;
-  const topFloorNum = topFloor ? getDisplayFloorNumber(topFloor.floorNumber, floors.length) : floors.length;
+  const topFloor = floors.length > 0 ? [...floors].sort((a, b) => b.floorNumber - a.floorNumber)[0] : null;
+  const isSold = topFloor?.status === 'sold';
+  const topBid = topFloor
+    ? (isSold ? Math.ceil(topFloor.price * 1.1) : topFloor.price)
+    : 1;
+  const topFloorNum = topFloor ? getDisplayFloorNumber(topFloor.floorNumber, floors.length) : 1;
 
   const [websiteInput, setWebsiteInput] = useState('');
 
@@ -81,14 +84,16 @@ export function GameHUD({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
               <span className="text-xs font-black tracking-tight text-slate-950 dark:text-white truncate">
-                Penthouse Level {topFloorNum}
+                {topFloor ? `Level ${topFloorNum}` : 'Ground Concourse Level 1'}
               </span>
               <span className="text-xs font-bold text-slate-700 dark:text-cyan-400 truncate">
-                ({topFloor?.brandTitle || 'arcadestudio.in'})
+                ({topFloor?.brandTitle || 'Available'})
               </span>
             </div>
             <p className="text-[10px] sm:text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">
-              Highest-traffic billboard spire · Next min bid: ₹{topBid.toLocaleString()}
+              {isSold
+                ? `Highest-traffic billboard spire · Next min bid: ₹${topBid.toLocaleString()}`
+                : `Base ground floor billboard · Base price: ₹${topBid.toLocaleString()}`}
             </p>
           </div>
         </div>
@@ -111,13 +116,19 @@ export function GameHUD({
             />
           </div>
 
-          {/* Outbid CTA Button */}
+          {/* CTA Button */}
           <button
             type="submit"
-            className="flex items-center justify-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl md:rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-md shadow-orange-500/25 transition active:scale-95 shrink-0 touch-manipulation"
+            className={`flex items-center justify-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl md:rounded-full font-black text-xs shadow-md transition active:scale-95 shrink-0 touch-manipulation ${
+              isSold
+                ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/25'
+                : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white shadow-cyan-500/25'
+            }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span className="whitespace-nowrap">Outbid ₹{topBid.toLocaleString()}</span>
+            <span className="whitespace-nowrap">
+              {isSold ? `Outbid ₹${topBid.toLocaleString()}` : `Claim ₹${topBid.toLocaleString()}`}
+            </span>
           </button>
         </div>
       </form>

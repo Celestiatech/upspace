@@ -70,16 +70,30 @@ export function Airplane({ theme, floors = [], altitude }: AirplaneProps) {
     ctx.textAlign = 'center';
     ctx.fillText('👑 #1 SKYLINE PINNACLE LEADER', 1024, 110);
 
-    // Giant Brand Name (Extra Bold & High-Contrast)
+    // Giant Brand Name (Extra Bold & High-Contrast with measurement-based font auto-scaling)
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 156px "Segoe UI", Inter, Arial, sans-serif';
-    const cleanName = brandTitle.length > 22 ? brandTitle.slice(0, 22) + '...' : brandTitle;
-    ctx.fillText(cleanName.toUpperCase(), 1024, 275);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const brandName = brandTitle.toUpperCase();
+    const maxBrandWidth = 1880;
+    let brandFontSize = 156;
+    ctx.font = `900 ${brandFontSize}px "Segoe UI", Inter, Arial, sans-serif`;
+    while (ctx.measureText(brandName).width > maxBrandWidth && brandFontSize > 44) {
+      brandFontSize -= 4;
+      ctx.font = `900 ${brandFontSize}px "Segoe UI", Inter, Arial, sans-serif`;
+    }
+    ctx.fillText(brandName, 1024, 268);
 
-    // Live price telemetry badge pill
+    // Live price telemetry badge pill with auto-scaling
+    const subText = `₹${brandPrice.toLocaleString('en-IN')} · TOP SKYLINE BIDDER`;
+    let subFontSize = 64;
+    ctx.font = `bold ${subFontSize}px monospace`;
+    while (ctx.measureText(subText).width > 1880 && subFontSize > 32) {
+      subFontSize -= 2;
+      ctx.font = `bold ${subFontSize}px monospace`;
+    }
     ctx.fillStyle = '#fef3c7';
-    ctx.font = 'bold 64px monospace';
-    ctx.fillText(`₹${brandPrice.toLocaleString()} · TOP BIDDER`, 1024, 415);
+    ctx.fillText(subText, 1024, 415);
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;

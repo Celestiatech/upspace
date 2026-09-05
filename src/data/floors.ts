@@ -10,7 +10,7 @@ export const DEMO_FLOORS: FloorData[] = [
     tagline: 'Prime ground lobby digital concourse display',
     category: 'Commercial Lobby',
     status: 'available',
-    price: 499,
+    price: 1,
     currency: '₹',
     dimensions: '360° Ground Concourse Digital Wrap',
     impressionsPerDay: '12,400 / day',

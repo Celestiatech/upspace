@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { FloorData } from '@/types/floor';
 import { ThemeMode } from '@/types/theme';
-import { getFloorsForArena } from '@/data/floors';
 import { CURRENT_ARENA } from '@/data/arenas';
 
 export interface AuthUser {
@@ -69,9 +68,9 @@ export const useAppStore = create<AppState>()(
       },
       logout: () => set({ user: null }),
 
-      // Initial Floors (starts with default arena floor)
-      floors: getFloorsForArena(CURRENT_ARENA.id),
-      selectedFloor: getFloorsForArena(CURRENT_ARENA.id)[0] || null,
+      // Initial Floors (strictly synced with database)
+      floors: [],
+      selectedFloor: null,
 
       addFloor: (newFloor: FloorData) => {
         const currentFloors = get().floors;
@@ -99,6 +98,7 @@ export const useAppStore = create<AppState>()(
               brandTitle: newFloor.brandTitle,
               bannerUrl: newFloor.adBannerUrl,
               claimCode: newFloor.claimCode,
+              category: newFloor.category,
             }),
           }).catch((err) => console.warn('Background floor claim sync notice:', err));
         } catch {}
@@ -106,9 +106,16 @@ export const useAppStore = create<AppState>()(
 
       selectFloor: (floor: FloorData | null) => set({ selectedFloor: floor }),
 
-      resetFloors: () => {
-        const initial = getFloorsForArena(CURRENT_ARENA.id);
-        set({ floors: initial, selectedFloor: initial[0] || null });
+      resetFloors: async () => {
+        try {
+          const res = await fetch(`/api/floors?arenaId=${CURRENT_ARENA.id}`, { method: 'DELETE' });
+          if (res.ok) {
+            const data = await res.json();
+            set({ floors: data.floors || [], selectedFloor: data.floors?.[0] || null });
+          }
+        } catch {
+          set({ floors: [], selectedFloor: null });
+        }
       },
 
       fetchFloorsFromApi: async () => {
@@ -116,8 +123,13 @@ export const useAppStore = create<AppState>()(
           const res = await fetch(`/api/floors?arenaId=${CURRENT_ARENA.id}`);
           if (res.ok) {
             const data = await res.json();
-            if (data?.success && Array.isArray(data.floors) && data.floors.length > 0) {
-              set({ floors: data.floors });
+            if (data?.success && Array.isArray(data.floors)) {
+              set((state) => ({
+                floors: data.floors,
+                selectedFloor: data.floors.some((f: FloorData) => f.id === state.selectedFloor?.id)
+                  ? state.selectedFloor
+                  : data.floors[0] || null,
+              }));
             }
           }
         } catch (err) {
@@ -143,15 +155,12 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'upspace-app-storage', // key in localStorage
-      version: 4,
+      version: 5,
       migrate: (persistedState: unknown) => {
         const saved = persistedState as Partial<AppState>;
-        const showcaseFloors = getFloorsForArena(CURRENT_ARENA.id);
-
-        // Upgrade older sessions that were initialized with the single-floor prototype.
         return {
           ...saved,
-          floors: saved.floors && saved.floors.length >= 8 ? saved.floors : showcaseFloors,
+          floors: Array.isArray(saved?.floors) ? saved.floors : [],
           theme: 'day',
           lowPower: true,
           penthouseMusic: false,

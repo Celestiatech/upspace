@@ -10,22 +10,39 @@ import {
   Globe,
   Tag,
   Crown,
-  Smartphone,
-  Copy,
-  Check,
   ArrowRight,
   ImageIcon,
   Edit3,
-  QrCode,
   Layers,
   Coins,
   CreditCard,
   Lock,
   AlertCircle,
   ExternalLink,
+  Download,
+  Printer,
+  FileText,
+  Mail,
+  Copy,
+  Check,
 } from 'lucide-react';
-import { FloorData, getDisplayFloorNumber, isPenthouseFloor } from '@/types/floor';
+import { FloorData, getDisplayFloorNumber } from '@/types/floor';
 import { ThemeMode } from '@/types/theme';
+import { useAppStore } from '@/store/useAppStore';
+
+export const CAMPAIGN_CATEGORIES = [
+  'E-Commerce',
+  'SaaS & Tech',
+  'AI & Automation',
+  'Developer Tools',
+  'FinTech',
+  'Design & Agency',
+  'Media & Gaming',
+  'Web3 & Crypto',
+  'Health & Fitness',
+  'Education',
+  'Other / Custom',
+];
 
 interface PurchaseModalProps {
   floor: FloorData | null;
@@ -38,7 +55,22 @@ interface PurchaseModalProps {
     targetUrl: string;
     bidAmount: number;
     claimCode: string;
+    category?: string;
   }) => void;
+}
+
+interface PaymentReceiptData {
+  receiptNo: string;
+  paymentId: string;
+  orderId: string;
+  date: string;
+  floorNumber: number;
+  displayLevel: number;
+  brandTitle: string;
+  targetUrl: string;
+  category: string;
+  amount: number;
+  claimCode: string;
 }
 
 /**
@@ -106,12 +138,10 @@ function extractWebsiteMetadata(inputUrl: string): { domain: string; cleanName: 
         .replace(/\.(co\.[a-z]{2}|org\.[a-z]{2}|net\.[a-z]{2}|edu\.[a-z]{2}|gov\.[a-z]{2}|[a-z]{2,8})$/i, '')
         .replace(/\.[a-z]{2,4}$/i, '');
 
-      // Smart capitalization & spacing for compound names like w3tech -> W3Tech, techcorp -> Techcorp
       cleanName = baseDomain
         .split(/[-_.]/)
         .map((part) => {
           if (/^w[0-9]/i.test(part)) {
-            // e.g. w3tech -> W3Tech
             return part.slice(0, 2).toUpperCase() + part.slice(2).charAt(0).toUpperCase() + part.slice(3);
           }
           if (part.length <= 3 && !/[aeiou]/i.test(part)) {
@@ -122,7 +152,7 @@ function extractWebsiteMetadata(inputUrl: string): { domain: string; cleanName: 
         .join(' ');
     }
 
-    const logoUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
+    const logoUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=128`;
 
     return {
       domain: hostname,
@@ -136,36 +166,41 @@ function extractWebsiteMetadata(inputUrl: string): { domain: string; cleanName: 
 
 export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: PurchaseModalProps) {
   const isDay = theme === 'day';
+  const currentUser = useAppStore((state) => state.user);
 
-  const [step, setStep] = useState<'details' | 'payment' | 'success'>('details');
-  const [paymentTab, setPaymentTab] = useState<'razorpay' | 'upi_qr'>('razorpay');
+  const [step, setStep] = useState<'details' | 'success'>('details');
   const [adTitle, setAdTitle] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState(currentUser?.email || '');
   const [bidAmount, setBidAmount] = useState(0);
-  const [claimCode, setClaimCode] = useState('');
-  const [copiedUpi, setCopiedUpi] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('E-Commerce');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
-  const [keyId, setKeyId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [receiptData, setReceiptData] = useState<PaymentReceiptData | null>(null);
+  const [copiedToken, setCopiedToken] = useState(false);
 
+  // Initialize or reset modal fields whenever the target floor changes
   useEffect(() => {
     if (!floor) return;
     setStep('details');
-    setPaymentTab('razorpay');
     setPaymentError(null);
+    setFormError(null);
+    setReceiptData(null);
+
+    const isOutbidFlow = floor.status === 'sold';
     const initialUrl = floor.targetUrl || '';
     setTargetUrl(initialUrl);
 
-    let initialTitle = floor.brandTitle || '';
-    let initialLogo = floor.adBannerUrl || '';
+    let initialTitle = isOutbidFlow && !initialUrl ? '' : (floor.brandTitle || '');
+    let initialLogo = isOutbidFlow && !initialUrl ? '' : (floor.adBannerUrl || '');
 
     if (initialUrl) {
       const meta = extractWebsiteMetadata(initialUrl);
       if (meta) {
         initialTitle = meta.cleanName;
-        if (!initialLogo) initialLogo = meta.logoUrl;
+        initialLogo = meta.logoUrl;
       }
     }
 
@@ -173,127 +208,107 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
     setBannerUrl(initialLogo);
     const minBid = floor.status === 'sold' ? Math.ceil(floor.price * 1.1) : floor.price;
     setBidAmount(minBid);
-    setClaimCode('');
     setIsProcessing(false);
   }, [floor]);
 
   // Handle URL change: dynamically auto-generate brand name & high-DPI logo
   const handleUrlChange = (value: string) => {
     setTargetUrl(value);
+    setFormError(null);
     const meta = extractWebsiteMetadata(value);
     if (meta) {
       setAdTitle(meta.cleanName);
       setBannerUrl(meta.logoUrl);
+    } else {
+      const cleanVal = value.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+      if (cleanVal && cleanVal.includes('.')) {
+        setBannerUrl(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(cleanVal)}&sz=128`);
+      } else if (!value.trim()) {
+        setAdTitle('');
+        setBannerUrl('');
+      }
     }
   };
 
   if (!floor) return null;
 
-  const displayNum = getDisplayFloorNumber(floor.floorNumber, floors.length);
-  const isPenthouse = isPenthouseFloor(floor.floorNumber, floors.length);
-  const isOutbid = floor.status === 'sold';
-  const minRequiredBid = isOutbid ? Math.ceil(floor.price * 1.1) : floor.price;
-
-  const upiId = 'upspace.skyline@okhdfcbank';
-  const upiPayload = `upi://pay?pa=${upiId}&pn=UpSpace%20Skyline&am=${bidAmount}&cu=INR&tn=Floor%20${displayNum}%20Billboard`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-    upiPayload
-  )}&bgcolor=${isDay ? 'ffffff' : '020617'}&color=${isDay ? '0f172a' : '38bdf8'}&margin=6`;
+  const nextFloorCount = Math.max(floors.length + 1, floor.floorNumber + 1);
+  const displayNum = getDisplayFloorNumber(floor.floorNumber, nextFloorCount);
+  const isPenthouse = true;
+  const minRequiredBid = floor.price;
 
   const detectedMeta = extractWebsiteMetadata(targetUrl);
 
-  const handleProceedToPayment = async (e: React.FormEvent) => {
+  /**
+   * Triggers official Razorpay Checkout directly with NO extra popup
+   */
+  const handleDirectRazorpayPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adTitle.trim() || !targetUrl.trim()) return;
+    setFormError(null);
     setPaymentError(null);
 
-    // Call backend order creation API
+    const cleanUrl = targetUrl.trim();
+    const cleanTitle = adTitle.trim();
+
+    if (!cleanUrl) {
+      setFormError('Please enter your Website / Destination URL to continue.');
+      return;
+    }
+    if (!cleanTitle) {
+      setFormError('Please enter a Brand Name for this billboard.');
+      return;
+    }
+    if (bidAmount < minRequiredBid) {
+      setFormError(`Minimum bid for this level is ₹${minRequiredBid.toLocaleString()}.`);
+      return;
+    }
+
+    setIsProcessing(true);
+
     try {
+      // 1. Ensure Razorpay SDK is loaded
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        throw new Error('Razorpay SDK could not be loaded. Please check your internet connection.');
+      }
+
+      // 2. Create Razorpay order on server
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: bidAmount,
           floorId: floor.id,
-          buyerName: adTitle.trim(),
-          brandTitle: adTitle.trim(),
+          buyerName: cleanTitle,
+          brandTitle: cleanTitle,
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.orderId) {
-          setPaymentOrderId(data.orderId);
-          if (data.keyId) setKeyId(data.keyId);
-        }
-      }
-    } catch (err) {
-      console.warn('Backend order creation notice:', err);
-    }
 
-    setStep('payment');
-  };
-
-  /**
-   * Triggers the official Razorpay Checkout Gateway
-   */
-  const handleLaunchRazorpayCheckout = async () => {
-    setIsProcessing(true);
-    setPaymentError(null);
-    const title = adTitle.trim();
-
-    try {
-      // 1. Ensure Razorpay SDK is loaded
-      const isLoaded = await loadRazorpayScript();
-      if (!isLoaded) {
-        throw new Error('Razorpay SDK could not be loaded. Please check your network or try UPI QR.');
-      }
-
-      // 2. Fetch fresh order if missing
-      let orderId = paymentOrderId;
-      let activeKey = keyId;
-
-      if (!orderId || !activeKey) {
-        const res = await fetch('/api/payments/create-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: bidAmount,
-            floorId: floor.id,
-            buyerName: title,
-            brandTitle: title,
-          }),
-        });
-        const orderData = await res.json();
-        if (orderData?.orderId) {
-          orderId = orderData.orderId;
-          activeKey = orderData.keyId;
-          setPaymentOrderId(orderData.orderId);
-          setKeyId(orderData.keyId);
-        }
-      }
+      const orderData = await res.json();
+      const orderId = orderData?.orderId || `order_${Date.now()}`;
+      const activeKey = orderData?.keyId || 'rzp_test_TNDlcqGKurGmEF';
 
       const generatedCode = `UPS-${Math.random().toString(36).slice(2, 8).toUpperCase()}-L${displayNum}`;
-      setClaimCode(generatedCode);
 
       // 3. Configure Razorpay Checkout Modal
       const options = {
-        key: activeKey || 'rzp_test_TNDlcqGKurGmEF',
+        key: activeKey,
         amount: Math.round(bidAmount * 100),
         currency: 'INR',
         name: 'UpSpace 3D Skyline',
-        description: `Level #${displayNum} Billboard Lease · ${title}`,
+        description: `Level #${displayNum} Permanent Placement · ${cleanTitle}`,
         image: bannerUrl || 'https://raw.githubusercontent.com/shadcn-ui/ui/main/apps/www/public/favicon.ico',
-        order_id: orderId && orderId.startsWith('order_') && !orderDataIsSimulated(orderId) ? orderId : undefined,
+        order_id: orderId.startsWith('order_') && orderId.length > 20 ? orderId : undefined,
         prefill: {
-          name: title,
+          name: cleanTitle,
           email: 'citizen@upspace.live',
           contact: '9999999999',
         },
         notes: {
           floorId: floor.id,
           displayFloor: displayNum,
-          brandTitle: title,
-          targetUrl: targetUrl.trim(),
+          brandTitle: cleanTitle,
+          targetUrl: cleanUrl,
         },
         theme: {
           color: '#f97316',
@@ -309,7 +324,7 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
           razorpay_signature?: string;
         }) => {
           try {
-            // 4. Verify payment cryptographically on backend
+            // 4. Verify payment on backend
             const verifyRes = await fetch('/api/payments/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -319,21 +334,45 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                 razorpaySignature: response.razorpay_signature,
                 floorId: floor.id,
                 amount: bidAmount,
-                buyerName: title,
-                brandTitle: title,
-                targetUrl: targetUrl.trim(),
+                buyerName: cleanTitle,
+                brandTitle: cleanTitle,
+                targetUrl: cleanUrl,
+                buyerEmail: buyerEmail.trim() || undefined,
+                claimCode: generatedCode,
+                displayLevel: displayNum,
               }),
             });
 
             const verifyData = await verifyRes.json();
             if (verifyRes.ok && verifyData.success) {
+              const paymentReceipt: PaymentReceiptData = {
+                receiptNo: `UPS-REC-${Date.now().toString().slice(-8)}`,
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id || orderId,
+                date: new Date().toLocaleString('en-IN', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                }),
+                floorNumber: floor.floorNumber,
+                displayLevel: displayNum,
+                brandTitle: cleanTitle,
+                targetUrl: cleanUrl,
+                category: selectedCategory.trim() || 'Custom Campaign',
+                amount: bidAmount,
+                claimCode: generatedCode,
+              };
+
+              setReceiptData(paymentReceipt);
+
               onConfirm({
-                title,
+                title: cleanTitle,
                 bannerUrl: bannerUrl.trim(),
-                targetUrl: targetUrl.trim(),
+                targetUrl: cleanUrl,
                 bidAmount,
                 claimCode: generatedCode,
+                category: selectedCategory.trim() || 'Custom Campaign',
               });
+
               setIsProcessing(false);
               setStep('success');
             } else {
@@ -349,71 +388,236 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
 
       const rzp = new (window as any).Razorpay(options);
       rzp.on('payment.failed', (response: any) => {
-        setPaymentError(response?.error?.description || 'Payment transaction failed or cancelled.');
+        setPaymentError(response?.error?.description || 'Payment was cancelled or failed in Razorpay.');
         setIsProcessing(false);
       });
 
       rzp.open();
     } catch (err: any) {
       console.warn('Razorpay open notice:', err);
-      setPaymentError(err?.message || 'Could not open Razorpay checkout modal. You can use direct UPI.');
+      setPaymentError(err?.message || 'Could not launch Razorpay gateway. Please try again.');
       setIsProcessing(false);
     }
   };
 
-  function orderDataIsSimulated(orderId: string) {
-    return orderId.includes('_') && orderId.length > 25;
-  }
+  /**
+   * Generates and downloads an official printable HTML Payment Receipt / Invoice
+   */
+  const handleDownloadReceipt = () => {
+    if (!receiptData) return;
 
-  const handleFinalPublishSimulated = async () => {
-    setIsProcessing(true);
-    setPaymentError(null);
-    const title = adTitle.trim();
-    const generatedCode = `UPS-${Math.random().toString(36).slice(2, 8).toUpperCase()}-L${displayNum}`;
-    setClaimCode(generatedCode);
-
-    // Call backend payment verify API
-    try {
-      await fetch('/api/payments/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          razorpayOrderId: paymentOrderId || `order_${Date.now()}`,
-          razorpayPaymentId: `pay_${Date.now()}`,
-          floorId: floor.id,
-          amount: bidAmount,
-          buyerName: title,
-          brandTitle: title,
-          targetUrl: targetUrl.trim(),
-        }),
-      });
-    } catch (err) {
-      console.warn('Backend verification notice:', err);
+    const receiptHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UpSpace Receipt - Level #${receiptData.displayLevel} (${receiptData.brandTitle})</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      margin: 0;
+      padding: 40px 20px;
     }
+    .receipt-card {
+      max-width: 640px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 36px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 24px;
+    }
+    .brand-logo {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ea580c;
+      letter-spacing: -0.5px;
+    }
+    .badge {
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 900;
+      margin: 24px 0 6px;
+      color: #0f172a;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .table td {
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 13px;
+    }
+    .table td.label {
+      color: #64748b;
+      font-weight: 600;
+      width: 38%;
+    }
+    .table td.value {
+      color: #0f172a;
+      font-weight: 700;
+      text-align: right;
+    }
+    .total-row td {
+      border-bottom: none;
+      font-size: 18px;
+      font-weight: 900;
+      color: #ea580c;
+      padding-top: 20px;
+    }
+    .token-box {
+      background: #f0fdf4;
+      border: 1px dashed #86efac;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 24px;
+      text-align: center;
+    }
+    .token-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: #15803d;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .token-val {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 16px;
+      font-weight: 900;
+      color: #166534;
+      letter-spacing: 1.5px;
+    }
+    .footer {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid #f1f5f9;
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .receipt-card { box-shadow: none; border: none; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-card">
+    <div class="header">
+      <div class="brand-logo">UpSpace 3D Skyline</div>
+      <div class="badge">PAID &amp; VERIFIED</div>
+    </div>
+    
+    <div class="title">Billboard Placement Receipt</div>
+    <div class="subtitle">Official Transaction Invoice for Permanent Virtual Real Estate</div>
 
-    setTimeout(() => {
-      onConfirm({
-        title,
-        bannerUrl: bannerUrl.trim(),
-        targetUrl: targetUrl.trim(),
-        bidAmount,
-        claimCode: generatedCode,
-      });
-      setIsProcessing(false);
-      setStep('success');
-    }, 500);
+    <table class="table">
+      <tr>
+        <td class="label">Receipt Number:</td>
+        <td class="value">${receiptData.receiptNo}</td>
+      </tr>
+      <tr>
+        <td class="label">Payment ID:</td>
+        <td class="value">${receiptData.paymentId}</td>
+      </tr>
+      <tr>
+        <td class="label">Order ID:</td>
+        <td class="value">${receiptData.orderId}</td>
+      </tr>
+      <tr>
+        <td class="label">Date &amp; Time:</td>
+        <td class="value">${receiptData.date}</td>
+      </tr>
+      <tr>
+        <td class="label">Floor Level:</td>
+        <td class="value">Level #${receiptData.displayLevel}</td>
+      </tr>
+      <tr>
+        <td class="label">Ownership Type:</td>
+        <td class="value">Permanent Lifetime Ownership</td>
+      </tr>
+      <tr>
+        <td class="label">Brand / Title:</td>
+        <td class="value">${receiptData.brandTitle}</td>
+      </tr>
+      <tr>
+        <td class="label">Destination URL:</td>
+        <td class="value">${receiptData.targetUrl}</td>
+      </tr>
+      <tr>
+        <td class="label">Category:</td>
+        <td class="value">${receiptData.category}</td>
+      </tr>
+      <tr class="total-row">
+        <td class="label">Amount Paid:</td>
+        <td class="value">₹${receiptData.amount.toLocaleString('en-IN')} INR</td>
+      </tr>
+    </table>
+
+    <div class="token-box">
+      <div class="token-label">Campaign Authentication Token</div>
+      <div class="token-val">${receiptData.claimCode}</div>
+    </div>
+
+    <div class="footer">
+      UpSpace 3D Virtual Real Estate &amp; Billboard Infrastructure · 256-Bit SSL Verified
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([receiptHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `UpSpace-Receipt-Level-${receiptData.displayLevel}-${receiptData.brandTitle.replace(/[^a-zA-Z0-9]/g, '_')}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
-  const handleCopyUpi = () => {
-    navigator.clipboard?.writeText(upiId);
-    setCopiedUpi(true);
-    setTimeout(() => setCopiedUpi(false), 2000);
+  const handleCopyToken = () => {
+    if (!receiptData) return;
+    navigator.clipboard?.writeText(receiptData.claimCode);
+    setCopiedToken(true);
+    setTimeout(() => setCopiedToken(false), 2000);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
       <section
-        className={`w-full max-w-lg rounded-[1.8rem] sm:rounded-3xl p-4 sm:p-7 border shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh] ${
+        className={`w-full max-w-lg rounded-[1.8rem] sm:rounded-3xl p-4 sm:p-7 border shadow-2xl overflow-hidden flex flex-col max-h-[94dvh] sm:max-h-[94vh] ${
           isDay
             ? 'bg-white border-slate-300 text-slate-950 shadow-slate-900/20'
             : 'bg-slate-950 border-white/15 text-white shadow-black/80'
@@ -425,20 +629,15 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-orange-700 dark:text-orange-400">
                 {isPenthouse ? <Crown className="w-3.5 h-3.5" /> : <Layers className="w-3.5 h-3.5" />}
-                {isPenthouse ? 'Penthouse Billboard' : 'Floor Reservation'}
+                {step === 'success' ? 'Payment Completed' : isPenthouse ? 'Penthouse Billboard' : 'Floor Reservation'}
               </span>
-              {step !== 'success' && (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-slate-200">
-                  Step {step === 'details' ? '1/2' : '2/2'}
-                </span>
-              )}
             </div>
             <h2 className="mt-0.5 text-lg sm:text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-              {step === 'payment'
-                ? `Checkout · Level ${displayNum}`
-                : isOutbid
-                ? `Outbid Level ${displayNum}`
-                : `Claim Level ${displayNum}`}
+              {step === 'success'
+                ? `Official Placement Receipt`
+                : floors.length === 0
+                ? `Claim Level #1 (Ground Concourse)`
+                : `Claim Level #${displayNum} (Top Penthouse)`}
             </h2>
           </div>
           <button
@@ -452,9 +651,9 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
 
         {/* MODAL BODY */}
         <div className="flex-1 overflow-y-auto py-3 space-y-3.5 custom-scrollbar">
-          {/* STEP 1: CAMPAIGN DETAILS */}
+          {/* STEP 1: CAMPAIGN DETAILS & DIRECT RAZORPAY CHECKOUT */}
           {step === 'details' && (
-            <form onSubmit={handleProceedToPayment} className="space-y-3.5">
+            <form onSubmit={handleDirectRazorpayPayment} className="space-y-3.5">
               {/* FLOOR SUMMARY CARD */}
               <div
                 className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border flex items-center justify-between text-xs ${
@@ -470,7 +669,7 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                       Floor Level #{displayNum}
                     </div>
                     <div className="text-slate-800 dark:text-slate-300 text-[11px] sm:text-xs font-mono font-bold">
-                      +{floor.elevationMeters.toFixed(1)}m · 360° Billboard
+                      +{floor.elevationMeters.toFixed(1)}m · Permanent Placement
                     </div>
                   </div>
                 </div>
@@ -498,7 +697,7 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                   required
                   value={targetUrl}
                   onChange={(e) => handleUrlChange(e.target.value)}
-                  placeholder="e.g. w3tech.co.in, stripe.com, linear.app"
+                  placeholder="e.g. w3tech.co.in, stripe.com, shopifythemedownloader.in"
                   className={`w-full px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold border outline-none transition ${
                     isDay
                       ? 'bg-slate-50 border-slate-300 focus:border-slate-900 text-slate-950 placeholder:text-slate-500 shadow-sm'
@@ -552,7 +751,7 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                   required
                   value={adTitle}
                   onChange={(e) => setAdTitle(e.target.value)}
-                  placeholder="e.g. W3Tech / Nexus Cloud"
+                  placeholder="e.g. W3Tech / Shopify Theme Downloader"
                   className={`w-full px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold border outline-none transition ${
                     isDay
                       ? 'bg-slate-50 border-slate-300 focus:border-slate-900 text-slate-950 placeholder:text-slate-500 shadow-sm'
@@ -574,7 +773,7 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                 </label>
                 <div className="flex items-center gap-2">
                   <input
-                    type="url"
+                    type="text"
                     value={bannerUrl}
                     onChange={(e) => setBannerUrl(e.target.value)}
                     placeholder="https://…/logo.png"
@@ -590,6 +789,80 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* CAMPAIGN CATEGORY */}
+              <div>
+                <label className="text-xs font-black text-slate-900 dark:text-slate-200 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-orange-600 dark:text-cyan-400" />
+                    Category *
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Select or Custom
+                  </span>
+                </label>
+                <div className="space-y-1.5">
+                  <select
+                    value={CAMPAIGN_CATEGORIES.includes(selectedCategory) ? selectedCategory : 'Other / Custom'}
+                    onChange={(e) => {
+                      if (e.target.value !== 'Other / Custom') {
+                        setSelectedCategory(e.target.value);
+                      } else {
+                        setSelectedCategory('');
+                      }
+                    }}
+                    className={`w-full px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold border outline-none transition cursor-pointer ${
+                      isDay
+                        ? 'bg-slate-50 border-slate-300 focus:border-slate-900 text-slate-950 shadow-sm'
+                        : 'bg-white/5 border-white/10 focus:border-cyan-400 text-white'
+                    }`}
+                  >
+                    {CAMPAIGN_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat} className={isDay ? 'text-slate-900 bg-white' : 'text-white bg-slate-900'}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                  {(!CAMPAIGN_CATEGORIES.includes(selectedCategory) || selectedCategory === 'Other / Custom' || selectedCategory === '') && (
+                    <input
+                      type="text"
+                      required
+                      value={selectedCategory === 'Other / Custom' ? '' : selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      placeholder="e.g. E-Commerce, Custom Campaign, AI Tools"
+                      className={`w-full px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold border outline-none transition ${
+                        isDay
+                          ? 'bg-slate-50 border-slate-300 focus:border-slate-900 text-slate-950 placeholder:text-slate-500 shadow-sm'
+                          : 'bg-white/5 border-white/10 focus:border-cyan-400 text-white placeholder:text-slate-400'
+                      }`}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* CONTACT & RECEIPT EMAIL */}
+              <div>
+                <label className="text-xs font-black text-slate-900 dark:text-slate-200 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-orange-600 dark:text-cyan-400" />
+                    Receipt &amp; Outbid Alerts Email
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                    Sends invoice &amp; telemetry
+                  </span>
+                </label>
+                <input
+                  type="email"
+                  value={buyerEmail}
+                  onChange={(e) => setBuyerEmail(e.target.value)}
+                  placeholder="e.g. founder@brand.com (optional)"
+                  className={`w-full px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold border outline-none transition ${
+                    isDay
+                      ? 'bg-slate-50 border-slate-300 focus:border-slate-900 text-slate-950 placeholder:text-slate-500 shadow-sm'
+                      : 'bg-white/5 border-white/10 focus:border-cyan-400 text-white placeholder:text-slate-400'
+                  }`}
+                />
               </div>
 
               {/* BID AMOUNT ADJUSTER */}
@@ -633,7 +906,15 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                 </div>
               </div>
 
-              {/* PROCEED BUTTON */}
+              {/* ERROR NOTIFICATION */}
+              {(formError || paymentError) && (
+                <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-700 dark:text-red-400 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{formError || paymentError}</span>
+                </div>
+              )}
+
+              {/* DIRECT RAZORPAY CHECKOUT ACTION BUTTON */}
               <div className="pt-2 flex items-center justify-between gap-2.5">
                 <button
                   type="button"
@@ -644,197 +925,140 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 sm:py-3 px-4 sm:px-5 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-500/25 transition active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2 touch-manipulation"
+                  disabled={isProcessing}
+                  className="flex-1 py-3 px-5 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-500/25 transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60 touch-manipulation"
                 >
-                  <CreditCard className="w-4 h-4" />
-                  <span>Proceed to Payment</span>
-                  <ArrowRight className="w-4 h-4" />
+                  {isProcessing ? (
+                    <>
+                      <Sparkles className="w-4 h-4 animate-spin" />
+                      <span>Opening Razorpay Gateway...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      <span>Pay ₹{bidAmount.toLocaleString()} via Razorpay</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
               </div>
             </form>
           )}
 
-          {/* STEP 2: RAZORPAY GATEWAY & UPI PAYMENT */}
-          {step === 'payment' && (
-            <div className="space-y-3.5 animate-in fade-in">
-              {/* PAYMENT ERROR NOTIFICATION */}
-              {paymentError && (
-                <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-700 dark:text-red-400 text-xs font-bold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{paymentError}</span>
+          {/* STEP 2: OFFICIAL PAYMENT RECEIPT & DOWNLOAD */}
+          {step === 'success' && receiptData && (
+            <div className="space-y-4 animate-in fade-in">
+              {/* SUCCESS ICON HEADER */}
+              <div className="text-center space-y-1">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 shadow-lg shadow-emerald-500/15">
+                  <CheckCircle2 className="w-7 h-7" />
                 </div>
-              )}
-
-              {/* PAYMENT METHOD TABS */}
-              <div className="flex p-1 rounded-xl bg-slate-200 dark:bg-white/10 border border-slate-300 dark:border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setPaymentTab('razorpay')}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition ${
-                    paymentTab === 'razorpay'
-                      ? 'bg-orange-500 text-white shadow-md'
-                      : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
-                  }`}
-                >
-                  <CreditCard className="w-3.5 h-3.5" />
-                  <span>Razorpay Gateway</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/20 uppercase">Live</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentTab('upi_qr')}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition ${
-                    paymentTab === 'upi_qr'
-                      ? 'bg-orange-500 text-white shadow-md'
-                      : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
-                  }`}
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>UPI QR Scan</span>
-                </button>
-              </div>
-
-              {/* OPTION 1: RAZORPAY OFFICIAL GATEWAY MODAL */}
-              {paymentTab === 'razorpay' && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-orange-500/10 via-amber-500/5 to-transparent border border-orange-500/25 space-y-4 text-center">
-                  <div className="mx-auto w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/30">
-                    <Lock className="w-6 h-6" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-slate-950 dark:text-white">
-                      Official Razorpay Checkout
-                    </h3>
-                    <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-1 max-w-xs mx-auto">
-                      Supports all UPI Apps (GPay, PhonePe, Paytm), Debit/Credit Cards, Net Banking &amp; Wallets.
-                    </p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-600 dark:text-slate-400 font-bold">Total Amount to Pay:</span>
-                    <span className="text-sm font-black text-orange-600 dark:text-orange-400">
-                      ₹{bidAmount.toLocaleString()} INR
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleLaunchRazorpayCheckout}
-                    disabled={isProcessing}
-                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white font-black text-sm shadow-xl shadow-orange-500/30 transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60 touch-manipulation"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Sparkles className="w-4 h-4 animate-spin" />
-                        <span>Opening Razorpay Gateway...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-4 h-4" />
-                        <span>Pay ₹{bidAmount.toLocaleString()} via Razorpay</span>
-                        <ExternalLink className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-
-                  <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>256-Bit SSL Encrypted &amp; PCI-DSS Level 1 Compliant</span>
-                  </div>
-                </div>
-              )}
-
-              {/* OPTION 2: INSTANT SCANNABLE UPI QR */}
-              {paymentTab === 'upi_qr' && (
-                <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10">
-                    {/* DYNAMIC SCANNABLE QR CODE */}
-                    <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl p-2 bg-white border border-slate-300 shadow-md flex items-center justify-center shrink-0">
-                      <img
-                        src={qrCodeUrl}
-                        alt="UPI Payment QR Code"
-                        className="w-full h-full object-contain rounded-lg"
-                      />
-                      <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl pointer-events-none" />
-                    </div>
-
-                    {/* PAYMENT INSTRUCTIONS & UPI ID */}
-                    <div className="flex-1 flex flex-col justify-center text-center sm:text-left space-y-1.5 sm:space-y-2 w-full">
-                      <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-black text-emerald-700 dark:text-emerald-400">
-                        <Smartphone className="w-4 h-4" />
-                        <span>Scan with Any UPI App</span>
-                      </div>
-                      <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                        GPay, PhonePe, Paytm, BHIM, or Banking Apps
-                      </p>
-
-                      <div className="font-mono text-sm font-black text-orange-700 dark:text-orange-400">
-                        Amount: ₹{bidAmount.toLocaleString()}
-                      </div>
-
-                      {/* UPI ID COPY BAR */}
-                      <div className="flex items-center gap-1.5 p-2 rounded-xl bg-slate-200/80 dark:bg-white/10 border border-slate-300 dark:border-white/10 text-xs font-mono font-bold">
-                        <span className="truncate flex-1 text-[11px] text-slate-900 dark:text-slate-200">{upiId}</span>
-                        <button
-                          type="button"
-                          onClick={handleCopyUpi}
-                          className="p-1 rounded-lg hover:bg-slate-300 dark:hover:bg-white/20 transition text-slate-800 dark:text-slate-200 shrink-0 touch-manipulation"
-                          title="Copy UPI ID"
-                        >
-                          {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleFinalPublishSimulated}
-                    disabled={isProcessing}
-                    className="w-full py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-600/25 transition active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2 disabled:opacity-50 touch-manipulation"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>{isProcessing ? 'Verifying...' : 'I Have Paid via UPI · Publish Live'}</span>
-                  </button>
-                </div>
-              )}
-
-              {/* ACTION BACK BUTTON */}
-              <div className="pt-1 flex items-center justify-start">
-                <button
-                  type="button"
-                  onClick={() => setStep('details')}
-                  className="px-3.5 sm:px-4 py-2 rounded-xl border border-slate-300 dark:border-white/10 text-xs font-black text-slate-800 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition touch-manipulation"
-                >
-                  Back to Details
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: SUCCESS ACTIVATION */}
-          {step === 'success' && (
-            <div className="py-5 sm:py-6 space-y-3.5 text-center animate-in fade-in">
-              <div className="mx-auto flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl sm:rounded-3xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 shadow-xl shadow-emerald-500/20">
-                <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8" />
-              </div>
-              <div>
-                <h3 className="text-xl sm:text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-                  Campaign Published Live!
+                <h3 className="text-lg sm:text-xl font-black text-slate-950 dark:text-white">
+                  Payment Successful!
                 </h3>
-                <p className="mt-1 text-xs font-bold text-slate-700 dark:text-slate-400 max-w-sm mx-auto">
-                  Level {displayNum} is now active on the UpSpace 3D skyline. Your campaign token:
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                  Level #{receiptData.displayLevel} is now permanently active on UpSpace.
                 </p>
               </div>
-              <div className="p-3 rounded-xl sm:rounded-2xl bg-cyan-500/15 border border-cyan-500/40 font-mono font-black text-xs sm:text-sm text-cyan-950 dark:text-cyan-300 tracking-wider">
-                {claimCode}
-              </div>
-              <button
-                onClick={onClose}
-                className="w-full py-2.5 sm:py-3 rounded-xl bg-slate-950 hover:bg-slate-800 dark:bg-cyan-500 dark:hover:bg-cyan-600 text-white dark:text-slate-950 font-black text-xs sm:text-sm shadow-md transition active:scale-[0.98] touch-manipulation"
+
+              {/* OFFICIAL RECEIPT CONTAINER */}
+              <div
+                className={`p-4 rounded-2xl border space-y-3 ${
+                  isDay ? 'bg-slate-50 border-slate-300' : 'bg-white/[0.03] border-white/10'
+                }`}
               >
-                Return to 3D Skyline
-              </button>
+                <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-white/10">
+                  <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-600 dark:text-slate-400">
+                    <FileText className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                    <span>{receiptData.receiptNo}</span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+                    PAID &amp; VERIFIED
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 dark:text-slate-400 font-bold">Floor Level:</span>
+                    <span className="font-black text-slate-950 dark:text-white">
+                      Level #{receiptData.displayLevel} (Permanent Placement)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 dark:text-slate-400 font-bold">Brand / Sponsor:</span>
+                    <span className="font-black text-slate-950 dark:text-white">{receiptData.brandTitle}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 dark:text-slate-400 font-bold">Destination URL:</span>
+                    <a
+                      href={receiptData.targetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono font-bold text-cyan-600 dark:text-cyan-400 hover:underline max-w-[200px] truncate"
+                    >
+                      {receiptData.targetUrl}
+                    </a>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 dark:text-slate-400 font-bold">Payment ID:</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-300 text-[11px]">
+                      {receiptData.paymentId}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 dark:text-slate-400 font-bold">Date &amp; Time:</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-300 text-[11px]">
+                      {receiptData.date}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-white/10">
+                    <span className="text-sm font-black text-slate-950 dark:text-white">Amount Paid:</span>
+                    <span className="text-base font-black font-mono text-orange-600 dark:text-orange-400">
+                      ₹{receiptData.amount.toLocaleString('en-IN')} INR
+                    </span>
+                  </div>
+                </div>
+
+                {/* TOKEN BOX WITH COPY BUTTON */}
+                <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[9px] font-black uppercase tracking-wider text-cyan-800 dark:text-cyan-300">
+                      Claim Authentication Token
+                    </div>
+                    <div className="font-mono font-black text-xs text-cyan-950 dark:text-cyan-200 truncate">
+                      {receiptData.claimCode}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyToken}
+                    className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-900 dark:text-cyan-200 hover:bg-cyan-500/30 transition shrink-0"
+                    title="Copy Token"
+                  >
+                    {copiedToken ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* ACTION BUTTONS: DOWNLOAD RECEIPT & RETURN TO SKYLINE */}
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleDownloadReceipt}
+                  className="w-full py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs sm:text-sm shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 touch-manipulation"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download Payment Receipt (.html / print)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-2.5 sm:py-3 rounded-xl bg-slate-950 hover:bg-slate-800 dark:bg-cyan-500 dark:hover:bg-cyan-600 text-white dark:text-slate-950 font-black text-xs sm:text-sm shadow-md transition active:scale-[0.98] touch-manipulation"
+                >
+                  Return to 3D Skyline
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -844,7 +1068,7 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
           <div className="mt-1 pt-2.5 border-t border-slate-200 dark:border-white/10 shrink-0">
             <div className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
-              <span>Instant automated activation · 7-Day protected lease</span>
+              <span>Razorpay Secured · 256-Bit SSL Encrypted · Instant Lifetime Activation</span>
             </div>
           </div>
         )}
@@ -852,4 +1076,3 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
     </div>
   );
 }
-

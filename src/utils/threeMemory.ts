@@ -91,15 +91,17 @@ class FloorTexturePool {
     canvas.width = 1024;
     canvas.height = 256;
     const ctx = canvas.getContext('2d', { willReadFrequently: false });
-    if (ctx) {
-      drawFn(canvas, ctx);
-    }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
     texture.generateMipmaps = false;
+    (canvas as any).__texture = texture;
+
+    if (ctx) {
+      drawFn(canvas, ctx);
+    }
 
     this.cache.set(key, { texture, refCount: 1 });
     return texture;

@@ -135,14 +135,15 @@ export function UserProfileModal({
 
   const handleClaimPurchase = () => {
     const code = claimCode.trim().toUpperCase();
-    const floor = floors.find((item) => item.claimCode === code && item.ownerName === 'Unclaimed purchase');
+    const floor = floors.find((item) => item.claimCode?.toUpperCase() === code);
     if (!floor) {
       setClaimMessage('That code is invalid or has already been claimed.');
       return;
     }
-    addFloor({ ...floor, ownerName: user.name, claimCode: undefined });
+    const targetOwner = user.name || user.email || user.username || 'Citizen';
+    addFloor({ ...floor, ownerName: targetOwner });
     setClaimCode('');
-    setClaimMessage(`Floor ${getDisplayFloorNumber(floor.floorNumber, floors.length)} is now linked to your profile.`);
+    setClaimMessage(`Level #${getDisplayFloorNumber(floor.floorNumber, floors.length)} (${floor.brandTitle}) is now linked to your profile!`);
   };
 
   const isDay = theme === 'day';

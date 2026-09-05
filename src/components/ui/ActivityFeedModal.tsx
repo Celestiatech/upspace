@@ -39,7 +39,7 @@ export function ActivityFeedModal({ theme, onClose }: ActivityFeedModalProps) {
         }
       } catch {}
       if (isMounted) {
-        setActivities(RECENT_ACTIVITY_LOG as any[]);
+        setActivities([]);
         setLoading(false);
       }
     }
@@ -49,7 +49,7 @@ export function ActivityFeedModal({ theme, onClose }: ActivityFeedModalProps) {
     };
   }, []);
 
-  const displayList = activities.length > 0 ? activities : RECENT_ACTIVITY_LOG;
+  const displayList = activities;
   const filteredEvents = displayList.filter((ev: any) => {
     if (filter === 'all') return true;
     return ev.type === filter;
@@ -117,7 +117,19 @@ export function ActivityFeedModal({ theme, onClose }: ActivityFeedModalProps) {
 
         {/* ACTIVITY LOG LIST */}
         <div className="flex-1 overflow-y-auto py-2 space-y-2.5 custom-scrollbar">
-          {filteredEvents.map((ev) => (
+          {loading ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400">
+              <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
+              <span className="text-xs">Loading activity log...</span>
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-2 text-center text-slate-500 dark:text-slate-400">
+              <Activity className="w-8 h-8 text-slate-400 opacity-60" />
+              <span className="font-bold text-sm text-slate-800 dark:text-slate-200">No activity or bids recorded yet</span>
+              <span className="text-xs text-slate-400 max-w-xs">Live outbids and claims will appear here in real-time as citizens participate.</span>
+            </div>
+          ) : (
+            filteredEvents.map((ev) => (
             <div
               key={ev.id}
               className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border flex items-center justify-between gap-2.5 sm:gap-3 text-xs transition ${
@@ -142,22 +154,23 @@ export function ActivityFeedModal({ theme, onClose }: ActivityFeedModalProps) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
                     <span className="font-black text-xs sm:text-sm text-slate-950 dark:text-white truncate">
-                      {ev.brand}
+                      {ev.brand || ev.title}
                     </span>
-                    <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-800 dark:text-cyan-400 truncate">
-                      ({ev.domain})
-                    </span>
+                    {ev.domain && (
+                      <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-800 dark:text-cyan-400 truncate">
+                        ({ev.domain})
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5 mt-0.5 text-slate-800 dark:text-slate-300 text-[11px] sm:text-xs font-medium">
                     <span>
-                      {ev.type === 'outbid' ? 'Outbid' : 'Claimed'}{' '}
-                      <b className="text-slate-950 dark:text-white font-black">Floor {ev.floorDisplayNumber}</b>
+                      {ev.detail || (ev.type === 'outbid' ? 'Outbid' : 'Claimed')}
                     </span>
                     <span>·</span>
                     <span className="flex items-center gap-1 font-bold text-slate-700 dark:text-slate-400">
                       <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                      {ev.timeAgo}
+                      {ev.timeAgo || ev.timestamp}
                     </span>
                   </div>
                 </div>
@@ -165,14 +178,14 @@ export function ActivityFeedModal({ theme, onClose }: ActivityFeedModalProps) {
 
               <div className="text-right shrink-0 font-mono">
                 <div className="font-black text-xs sm:text-base text-slate-950 dark:text-white">
-                  ₹{ev.amount.toLocaleString()}
+                  ₹{Number(ev.amount).toLocaleString()}
                 </div>
                 <span className="text-[9px] sm:text-[10px] uppercase font-black text-emerald-700 dark:text-emerald-400">
                   VERIFIED
                 </span>
               </div>
             </div>
-          ))}
+          )))}
         </div>
 
         {/* MODAL FOOTER NOTICE MATCHING HOW UPSPACE WORKS */}

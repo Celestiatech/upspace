@@ -43,11 +43,15 @@ export interface FloorData {
   safetyScanPassed?: boolean;
   impressionsWeekly?: number;
   clicksDelivered?: number;
+  floorClicks?: number;
+  websiteVisits?: number;
   ctr?: number; // e.g. 12.4%
   daysHeld?: number;
   leaseExpiryDays?: number; // Days remaining in 7-day retention cycle
   socialLinks?: FloorSocialLinks;
   bidHistory?: FloorBidHistory[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /**

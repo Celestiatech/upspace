@@ -50,7 +50,7 @@ export function BuildingStructure({
     return { w, d: w, r: 0.85 };
   };
 
-  const topDimensions = getFloorDimensions(totalFloors - 1);
+  const topDimensions = getFloorDimensions(Math.max(0, totalFloors - 1));
 
   return (
     <group position={[0, 0, 0]}>

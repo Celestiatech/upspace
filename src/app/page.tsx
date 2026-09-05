@@ -89,49 +89,44 @@ export default function AppScreen() {
     setResetTrigger((prev) => prev + 1);
   };
 
-  // Purchase flow modal
+  // Purchase flow modal: Always builds a brand new floor on top of existing floors
   const handleOpenPurchase = (floorToClaim?: FloorData, initialUrl?: string) => {
-    if (floorToClaim) {
-      setPurchaseFloor(
-        floorToClaim.status === 'sold'
-          ? {
-              ...floorToClaim,
-              targetUrl: initialUrl || floorToClaim.targetUrl,
-              price: Math.ceil(floorToClaim.price * 1.1),
-            }
-          : {
-              ...floorToClaim,
-              targetUrl: initialUrl || floorToClaim.targetUrl,
-            }
-      );
-      return;
-    }
-    const highestFloorNumber = Math.max(...floors.map((floor) => floor.floorNumber), 0);
+    const highestFloorNumber = floors.length > 0 ? Math.max(...floors.map((floor) => floor.floorNumber)) : -1;
     const nextFloorNumber = highestFloorNumber + 1;
-    const highestPrice = Math.max(...floors.map((floor) => floor.price), 0);
+    const highestPrice = floors.length > 0 ? Math.max(...floors.map((floor) => floor.price)) : 1;
     const nextDisplayNum = nextFloorNumber + 1;
+    const minBid = floors.length > 0 ? (floorToClaim ? Math.ceil(floorToClaim.price * 1.1) : Math.ceil(highestPrice * 1.1)) : 1;
 
     setPurchaseFloor({
-      id: `${arena.id}-floor-${nextFloorNumber}`,
+      id: `${arena.id}-floor-${Date.now()}`,
       floorNumber: nextFloorNumber,
       arenaId: arena.id,
       ownerName: currentUser?.name || null,
       brandTitle: null,
       targetUrl: initialUrl || undefined,
-      tagline: `Pinnacle Level ${nextDisplayNum} — Elevated skyline billboard`,
-      category: 'Pinnacle Build Opportunity',
+      tagline: floors.length === 0
+        ? 'Prime ground lobby digital concourse display'
+        : `Level ${nextDisplayNum} — Elevated skyline billboard`,
+      category: floors.length === 0 ? 'Commercial Lobby' : 'Custom Campaign',
       status: 'available',
-      price: Math.ceil(highestPrice * 1.15),
+      price: minBid,
       currency: 'INR',
-      dimensions: '360° Panoramic Digital Wrap & Spire Halo',
-      impressionsPerDay: 'Launching soon',
-      elevationMeters: arena.baseHeight + floors.length * arena.floorHeight + arena.floorHeight / 2,
+      dimensions: '360° Ground Concourse Digital Wrap',
+      impressionsPerDay: '12,400 / day',
+      elevationMeters: arena.baseHeight + nextFloorNumber * arena.floorHeight + arena.floorHeight / 2,
     });
   };
 
   const handleSelectFloor = (floor: FloorData) => {
     selectFloor(floor);
     setDrawerOpen(true);
+    try {
+      fetch('/api/floors/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ floorId: floor.id, action: 'floor_click' }),
+      }).catch(() => {});
+    } catch {}
   };
 
   const handleConfirmPurchase = (campaign: {
@@ -140,28 +135,38 @@ export default function AppScreen() {
     targetUrl: string;
     bidAmount: number;
     claimCode: string;
+    category?: string;
   }) => {
     if (!purchaseFloor) return;
 
-    const updatedFloor: FloorData = {
+    const highestFloorNumber = floors.length > 0 ? Math.max(...floors.map((floor) => floor.floorNumber)) : -1;
+    const nextFloorNumber = highestFloorNumber + 1;
+    const newFloorId = `${arena.id}-floor-${Date.now()}`;
+
+    const newFloor: FloorData = {
       ...purchaseFloor,
+      id: newFloorId,
+      floorNumber: nextFloorNumber,
+      elevationMeters: arena.baseHeight + nextFloorNumber * arena.floorHeight + arena.floorHeight / 2,
       status: 'sold',
-      ownerName: currentUser?.name || currentUser?.email || 'Unclaimed purchase',
+      ownerName: currentUser?.name || currentUser?.email || campaign.title || 'UpSpace Citizen',
       price: campaign.bidAmount,
       brandTitle: campaign.title,
       tagline: campaign.targetUrl ? 'Interactive campaign live on UpSpace' : 'New campaign now live',
-      category: 'Custom Campaign',
+      category: campaign.category || 'Custom Campaign',
       adBannerUrl: campaign.bannerUrl || undefined,
       targetUrl: campaign.targetUrl || undefined,
       claimCode: campaign.claimCode,
       verifiedDomain: true,
       verifiedType: 'indie',
       safetyScanPassed: true,
-      impressionsWeekly: 120000,
-      clicksDelivered: 1650,
-      ctr: 14.8,
-      daysHeld: 1,
+      impressionsWeekly: 0,
+      clicksDelivered: 0,
+      ctr: 0,
+      daysHeld: 0,
       leaseExpiryDays: 7,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       bidHistory: [
         {
           bidder: campaign.title || 'Anonymous Brand',
@@ -172,8 +177,9 @@ export default function AppScreen() {
       ],
     };
 
-    addFloor(updatedFloor);
-    setPurchaseFloor(null);
+    addFloor(newFloor);
+    // Keep purchaseFloor active so the user can review, download receipt, and copy claim token.
+    // The modal will be closed when the user clicks "Return to 3D Skyline" or the (X) close button.
   };
 
   const isDay = theme === 'day';
@@ -319,13 +325,13 @@ export default function AppScreen() {
             </div>
             <ol className="mt-4 space-y-3 text-xs sm:text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               <li>
-                <b className="text-slate-900 dark:text-white">1. Select a Level.</b> Click any floor in 3D orbit or the 2D directory to inspect live impressions, clicks, domain verification, and lease time.
+                <b className="text-slate-900 dark:text-white">1. Select a Level.</b> Click any floor in 3D orbit or the 2D directory to inspect live impressions, clicks, domain verification, and permanent ownership status.
               </li>
               <li>
                 <b className="text-slate-900 dark:text-white">2. Place Your Campaign.</b> Provide your destination URL, brand title, and custom billboard banner. All URLs undergo automated SSL &amp; malware screening.
               </li>
               <li>
-                <b className="text-slate-900 dark:text-white">3. 7-Day Protected Lease.</b> Your level is protected for 7 days. Higher bids bump elevation and unlock exclusive high-altitude billboards.
+                <b className="text-slate-900 dark:text-white">3. Permanent Lifetime Placement.</b> Your floor is yours forever. Every new bid stacks a new floor on top, growing the skyscraper taller while keeping your floor permanently intact.
               </li>
             </ol>
             <div className="mt-4 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 text-xs text-orange-700 dark:text-orange-300 font-medium text-center">
