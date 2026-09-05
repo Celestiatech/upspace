@@ -206,7 +206,10 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
 
     setAdTitle(initialTitle);
     setBannerUrl(initialLogo);
-    const minBid = floor.status === 'sold' ? Math.ceil(floor.price * 1.1) : floor.price;
+    if (floor.category) {
+      setSelectedCategory(floor.category);
+    }
+    const minBid = floor.price || (floor.status === 'sold' ? Math.ceil(floor.price * 1.1) : 50);
     setBidAmount(minBid);
     setIsProcessing(false);
   }, [floor]);
@@ -617,14 +620,14 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
       <section
-        className={`w-full max-w-lg rounded-[1.8rem] sm:rounded-3xl p-4 sm:p-7 border shadow-2xl overflow-hidden flex flex-col max-h-[94dvh] sm:max-h-[94vh] ${
+        className={`w-full max-w-2xl rounded-[1.8rem] sm:rounded-3xl p-3 sm:p-5 border shadow-2xl overflow-visible flex flex-col ${
           isDay
             ? 'bg-white border-slate-300 text-slate-950 shadow-slate-900/20'
             : 'bg-slate-950 border-white/15 text-white shadow-black/80'
         }`}
       >
         {/* MODAL HEADER */}
-        <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200 dark:border-white/10 shrink-0">
+        <div className="flex items-start justify-between gap-3 pb-2 border-b border-slate-200 dark:border-white/10 shrink-0">
           <div>
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-orange-700 dark:text-orange-400">
@@ -650,10 +653,10 @@ export function PurchaseModal({ floor, floors, theme, onClose, onConfirm }: Purc
         </div>
 
         {/* MODAL BODY */}
-        <div className="flex-1 overflow-y-auto py-3 space-y-3.5 custom-scrollbar">
+        <div className="flex-1 overflow-visible py-2 space-y-2">
           {/* STEP 1: CAMPAIGN DETAILS & DIRECT RAZORPAY CHECKOUT */}
           {step === 'details' && (
-            <form onSubmit={handleDirectRazorpayPayment} className="space-y-3.5">
+            <form onSubmit={handleDirectRazorpayPayment} className="space-y-2.5">
               {/* FLOOR SUMMARY CARD */}
               <div
                 className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border flex items-center justify-between text-xs ${

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sky } from '@react-three/drei';
 import * as THREE from 'three';
@@ -34,12 +34,25 @@ export function ArenaCanvas({
 }: ArenaCanvasProps) {
   const isDayMode = theme === 'day';
   const bgColor = isDayMode ? '#ef9a71' : '#0f172a';
+  const [pageVisible, setPageVisible] = useState(true);
+
+  // Stop the render loop while the browser tab is hidden. This prevents a
+  // background tab from keeping the GPU/CPU (and laptop fans) busy.
+  useEffect(() => {
+    const updateVisibility = () => setPageVisible(document.visibilityState === 'visible');
+    updateVisibility();
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => document.removeEventListener('visibilitychange', updateVisibility);
+  }, []);
 
   return (
     <div className="relative w-full h-full select-none">
       <Canvas
+        frameloop={pageVisible ? 'always' : 'never'}
+        // Adaptive performance prevents frame dips while keeping rendering sharp
+        performance={{ min: 0.75, max: 1, debounce: 200 }}
         shadows={!lowPower}
-        dpr={lowPower ? [1, 1.5] : [1, 2]}
+        dpr={lowPower ? [1, 1.25] : [1, 2]}
         camera={{
           position: [18, 17, 42],
           fov: 32,
@@ -48,10 +61,14 @@ export function ArenaCanvas({
         }}
         gl={{
           antialias: true,
-          alpha: true,
-          powerPreference: lowPower ? 'default' : 'high-performance',
+          alpha: false,
+          stencil: false,
+          depth: true,
+          powerPreference: 'high-performance',
+          precision: 'highp',
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.1,
+          // Brighter HDR-style highlights without a costly bloom pass.
+          toneMappingExposure: lowPower ? 1.3 : 1.5,
         }}
         className="w-full h-full"
       >

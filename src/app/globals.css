@@ -1,14 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #060714;
+  --background: #e89163;
+  --foreground: #0f172a;
+  --font-bricolage: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif;
+  --brand-orange: #ff6b1a;
+  --brand-orange-soft: rgba(255, 107, 26, 0.12);
+  --pill: #ffffff;
+  --pill-border: #e2e8f0;
+}
+
+.dark {
+  --background: #050811;
   --foreground: #f8fafc;
-  --surface-glass: rgba(10, 16, 30, 0.82);
-  --surface-border: rgba(255, 255, 255, 0.11);
-  --font-manrope: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', Montserrat;
-  --font-space-grotesk: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', Montserrat;
+  --pill: #0f172a;
+  --pill-border: #1e293b;
 }
 
 * {
@@ -25,7 +35,7 @@ body {
   color: var(--foreground);
   overflow: hidden;
   user-select: none;
-  font-family: var(--font-manrope);
+  font-family: var(--font-bricolage), 'Bricolage Grotesque', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   touch-action: manipulation;
   -webkit-overflow-scrolling: touch;
 }

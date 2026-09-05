@@ -25,7 +25,7 @@ export function CloudReveal() {
     // Stage 3: Ready
     const t3 = setTimeout(() => {
       setProgress(100);
-      setStatusText('ENTERING UPSPACE METAVERSE...');
+      setStatusText('ENTERING GET3DBILLBOARDS SKYLINE...');
     }, 980);
 
     // Stage 4: Trigger smooth fade out
@@ -54,7 +54,7 @@ export function CloudReveal() {
       className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#050814] select-none transition-all duration-700 ease-out ${
         isFadingOut ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100 pointer-events-auto'
       }`}
-      aria-label="Loading UpSpace"
+      aria-label="Loading Get3DBillboards"
     >
       {/* Ambient background glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -85,7 +85,7 @@ export function CloudReveal() {
         {/* Brand Title */}
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xl sm:text-2xl font-black tracking-tight text-white">
-            Up<span className="bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">Space</span>
+            Get<span className="bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">3DBillboards</span>
           </span>
           <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-cyan-500/20 border border-cyan-400/40 text-cyan-300">
             3D LIVE

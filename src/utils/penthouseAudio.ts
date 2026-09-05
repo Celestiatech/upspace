@@ -85,6 +85,9 @@ class PenthouseAudioManager {
     const now = ctx.currentTime;
     const chordDuration = 4.0;
 
+    // Add a lightweight disco groove underneath each chord phrase.
+    this.playDiscoBeat(now);
+
     // Play each note in the chord with warm sine/triangle wave synthesizer voices
     chord.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
@@ -112,6 +115,45 @@ class PenthouseAudioManager {
     // Random soft chime sparkle
     if (Math.random() > 0.3) {
       this.playChime(chord[chord.length - 1] * 2, now + 1.2);
+    }
+  }
+
+  private playDiscoBeat(startTime: number) {
+    if (!this.ctx || !this.filterNode) return;
+    const ctx = this.ctx;
+    const beat = 0.5;
+
+    for (let step = 0; step < 8; step++) {
+      const time = startTime + step * beat;
+
+      // Four-on-the-floor kick.
+      if (step % 2 === 0) {
+        const kick = ctx.createOscillator();
+        const gain = ctx.createGain();
+        kick.type = 'sine';
+        kick.frequency.setValueAtTime(125, time);
+        kick.frequency.exponentialRampToValueAtTime(48, time + 0.16);
+        gain.gain.setValueAtTime(0.0001, time);
+        gain.gain.exponentialRampToValueAtTime(0.16, time + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.22);
+        kick.connect(gain);
+        gain.connect(this.filterNode);
+        kick.start(time);
+        kick.stop(time + 0.24);
+      }
+
+      // Bright offbeat hi-hat tick (very short, low CPU).
+      const hat = ctx.createOscillator();
+      const hatGain = ctx.createGain();
+      hat.type = 'square';
+      hat.frequency.setValueAtTime(5200, time + beat * 0.5);
+      hatGain.gain.setValueAtTime(0.0001, time + beat * 0.5);
+      hatGain.gain.exponentialRampToValueAtTime(0.018, time + beat * 0.5 + 0.002);
+      hatGain.gain.exponentialRampToValueAtTime(0.0001, time + beat * 0.5 + 0.045);
+      hat.connect(hatGain);
+      hatGain.connect(this.filterNode);
+      hat.start(time + beat * 0.5);
+      hat.stop(time + beat * 0.5 + 0.05);
     }
   }
 

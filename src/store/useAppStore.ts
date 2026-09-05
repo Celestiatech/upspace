@@ -155,7 +155,9 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'upspace-app-storage', // key in localStorage
-      version: 5,
+      // Bump this when changing graphics defaults so existing visitors also
+      // receive the fan-friendly low-power setting once.
+      version: 6,
       migrate: (persistedState: unknown) => {
         const saved = persistedState as Partial<AppState>;
         return {

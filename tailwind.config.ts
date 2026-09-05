@@ -34,8 +34,8 @@ const config: Config = {
         "glow-purple": "0 0 25px -5px rgba(157, 78, 221, 0.35)",
       },
       fontFamily: {
-        sans: ["var(--font-manrope)", "system-ui", "sans-serif"],
-        display: ["var(--font-space-grotesk)", "system-ui", "sans-serif"],
+        sans: ["var(--font-bricolage)", "'Bricolage Grotesque'", "system-ui", "sans-serif"],
+        display: ["var(--font-bricolage)", "'Bricolage Grotesque'", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "monospace"],
       },
       animation: {

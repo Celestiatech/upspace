@@ -56,7 +56,8 @@ export default function AppScreen() {
   // Set default selected floor on initial load if null
   useEffect(() => {
     if (!selectedFloor && floors.length > 0) {
-      selectFloor(floors[0]);
+      // Start at the terrace/top of the skyline after a fresh reload.
+      selectFloor(floors[floors.length - 1]);
     }
   }, [selectedFloor, floors, selectFloor]);
 
@@ -80,22 +81,28 @@ export default function AppScreen() {
     }
   }, [penthouseMusic]);
 
-  // Reset camera view to ground floor
+  // Reset camera view to the same left-side terrace angle used on reload.
   const handleResetCamera = () => {
-    const groundFloor = floors[0];
-    if (groundFloor) {
-      selectFloor(groundFloor);
+    const terraceFloor = floors[floors.length - 1];
+    if (terraceFloor) {
+      selectFloor(terraceFloor);
     }
     setResetTrigger((prev) => prev + 1);
   };
 
   // Purchase flow modal: Always builds a brand new floor on top of existing floors
-  const handleOpenPurchase = (floorToClaim?: FloorData, initialUrl?: string) => {
+  const handleOpenPurchase = (
+    floorToClaim?: FloorData,
+    initialUrl?: string,
+    initialCategory?: string,
+    initialBid?: number
+  ) => {
     const highestFloorNumber = floors.length > 0 ? Math.max(...floors.map((floor) => floor.floorNumber)) : -1;
     const nextFloorNumber = highestFloorNumber + 1;
     const highestPrice = floors.length > 0 ? Math.max(...floors.map((floor) => floor.price)) : 1;
     const nextDisplayNum = nextFloorNumber + 1;
-    const minBid = floors.length > 0 ? (floorToClaim ? Math.ceil(floorToClaim.price * 1.1) : Math.ceil(highestPrice * 1.1)) : 1;
+    const minBid = floors.length > 0 ? (floorToClaim ? Math.ceil(floorToClaim.price * 1.1) : Math.ceil(highestPrice * 1.1)) : 50;
+    const finalBid = initialBid && initialBid >= 1 ? initialBid : minBid;
 
     setPurchaseFloor({
       id: `${arena.id}-floor-${Date.now()}`,
@@ -107,9 +114,9 @@ export default function AppScreen() {
       tagline: floors.length === 0
         ? 'Prime ground lobby digital concourse display'
         : `Level ${nextDisplayNum} — Elevated skyline billboard`,
-      category: floors.length === 0 ? 'Commercial Lobby' : 'Custom Campaign',
+      category: initialCategory || (floors.length === 0 ? 'Commercial Lobby' : 'Custom Campaign'),
       status: 'available',
-      price: minBid,
+      price: finalBid,
       currency: 'INR',
       dimensions: '360° Ground Concourse Digital Wrap',
       impressionsPerDay: '12,400 / day',
@@ -186,8 +193,8 @@ export default function AppScreen() {
 
   return (
     <main
-      className={`relative w-screen h-screen overflow-hidden select-none transition-colors duration-500 font-sans ${
-        isDay ? 'bg-[#38bdf8] text-slate-900' : 'bg-[#0f172a] text-slate-100'
+      className={`relative w-screen h-[100dvh] min-h-[100dvh] overflow-hidden select-none transition-colors duration-500 font-sans ${
+        isDay ? 'bg-[#ef9a71] text-slate-900' : 'bg-[#0f172a] text-slate-100'
       }`}
     >
       {/* 1. PERSISTENT TOP NAVIGATION HEADER */}
@@ -198,7 +205,7 @@ export default function AppScreen() {
         viewMode={viewMode}
         penthouseMusic={penthouseMusic}
         onTogglePenthouseMusic={togglePenthouseMusic}
-        onToggleViewMode={() => setViewMode(viewMode === '3d' ? 'directory' : '3d')}
+        onToggleViewMode={() => setViewMode((prev) => (prev === '3d' ? 'directory' : '3d'))}
         onToggleTheme={toggleTheme}
         onOpenHowItWorks={() => setRulesOpen(true)}
         onOpenActivityFeed={() => setActivityModalOpen(true)}
@@ -237,12 +244,17 @@ export default function AppScreen() {
           theme={theme}
           autoRotate={autoRotate}
           lowPower={lowPower}
+          penthouseMusic={penthouseMusic}
           onToggleTheme={toggleTheme}
           onToggleAutoRotate={toggleAutoRotate}
           onToggleLowPower={toggleLowPower}
+          onTogglePenthouseMusic={togglePenthouseMusic}
           onResetCamera={handleResetCamera}
           onOpenPurchase={handleOpenPurchase}
           onOpenHowItWorks={() => setRulesOpen(true)}
+          onOpenActivityFeed={() => setActivityModalOpen(true)}
+          onOpenTerms={() => setRulesOpen(true)}
+          onOpenPrivacy={() => setRulesOpen(true)}
         />
       )}
 

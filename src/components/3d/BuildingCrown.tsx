@@ -33,8 +33,10 @@ function PolyPizzaHelicopter() {
     let rotor: THREE.Mesh | null = null;
     clone.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return;
-      object.castShadow = true;
-      object.receiveShadow = true;
+      // The helicopter is a small animated background prop. Excluding it from
+      // the shadow map avoids a large per-frame GPU cost on low-power devices.
+      object.castShadow = false;
+      object.receiveShadow = false;
       const applyMaterial = (source: THREE.Material) => {
         const material = source.clone() as THREE.MeshStandardMaterial;
         material.color.set(meshIndex++ % 6 === 0 ? '#ef6c2f' : '#151515');
@@ -706,7 +708,7 @@ export function BuildingCrown({ topWidth, topDepth, roofY, isDayMode = false, fl
             🌐 3D VIRTUAL ADVERTISING SKYLINE
           </Text>
           <Text position={[0, 1.28, 0.12]} fontSize={0.54} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="bold" maxWidth={4.2} textAlign="center">
-            UpSpace
+            Get3DBillboards
           </Text>
           <Text position={[0, 0.88, 0.12]} fontSize={0.18} color="#facc15" anchorX="center" anchorY="middle" fontWeight="bold" maxWidth={4.2} textAlign="center">
             CLAIM YOUR FLOOR ON THE SKYLINE
@@ -721,19 +723,19 @@ export function BuildingCrown({ topWidth, topDepth, roofY, isDayMode = false, fl
             🌐 3D VIRTUAL ADVERTISING SKYLINE
           </Text>
           <Text position={[0, 1.28, -0.12]} rotation={[0, Math.PI, 0]} fontSize={0.54} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="bold" maxWidth={4.2} textAlign="center">
-            UpSpace
+            Get3DBillboards
           </Text>
           <Text position={[0, 0.88, -0.12]} rotation={[0, Math.PI, 0]} fontSize={0.18} color="#facc15" anchorX="center" anchorY="middle" fontWeight="bold" maxWidth={4.2} textAlign="center">
             CLAIM YOUR FLOOR ON THE SKYLINE
           </Text>
         </group>
 
-        {/* Roaming low-poly visitors add scale to the upper roof deck. */}
+        {/* Security detail protecting the helicopter passenger on the upper roof deck. */}
         <group position={[0, 0.5, 0]}>
           {[
-            { x: -topWidth * 0.18, z: topDepth * 0.16, c: '#ef4444', r: Math.PI, s: 0.9 },
-            { x: -topWidth * 0.05, z: topDepth * 0.32, c: '#3b82f6', r: Math.PI, s: 0.82 },
-            { x: topWidth * 0.2, z: topDepth * 0.05, c: '#10b981', r: Math.PI * 0.9, s: 0.95 },
+            { x: -topWidth * 0.18, z: topDepth * 0.16, c: '#111827', r: Math.PI, s: 0.9 },
+            { x: -topWidth * 0.05, z: topDepth * 0.32, c: '#1e293b', r: Math.PI, s: 0.82 },
+            { x: topWidth * 0.2, z: topDepth * 0.05, c: '#0f172a', r: Math.PI * 0.9, s: 0.95 },
           ].map((p, i) => (
             <group key={`roof-${i}`} position={[p.x, 0, p.z]} rotation={[0, p.r, 0]} scale={p.s}>
               <RealisticHuman
@@ -745,6 +747,25 @@ export function BuildingCrown({ topWidth, topDepth, roofY, isDayMode = false, fl
                 hairColor={['#1c1917', '#3f2a1d', '#713f12'][i % 3]}
                 headTilt={0.12}
               />
+              {/* Dark glasses and comms earpiece identify the rooftop security team. */}
+              <group position={[0, 0.59, -0.06]}>
+                <mesh position={[-0.035, 0, 0]}>
+                  <boxGeometry args={[0.045, 0.025, 0.012]} />
+                  <meshStandardMaterial color="#020617" roughness={0.2} />
+                </mesh>
+                <mesh position={[0.035, 0, 0]}>
+                  <boxGeometry args={[0.045, 0.025, 0.012]} />
+                  <meshStandardMaterial color="#020617" roughness={0.2} />
+                </mesh>
+                <mesh position={[0, 0, 0]}>
+                  <boxGeometry args={[0.025, 0.01, 0.012]} />
+                  <meshStandardMaterial color="#020617" />
+                </mesh>
+              </group>
+              <mesh position={[0.075, 0.52, 0]}>
+                <sphereGeometry args={[0.014, 8, 6]} />
+                <meshStandardMaterial color="#38bdf8" emissive="#38bdf8" emissiveIntensity={0.8} />
+              </mesh>
               <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                 <circleGeometry args={[0.16, 16]} />
                 <meshBasicMaterial color="#000000" transparent opacity={0.2} />
@@ -787,12 +808,16 @@ export function BuildingCrown({ topWidth, topDepth, roofY, isDayMode = false, fl
           <mesh position={[0.58, 0.31, 0.49]}><planeGeometry args={[0.28, 0.5]} /><meshPhysicalMaterial color="#183142" metalness={0.4} roughness={0.12} transparent opacity={0.82} /></mesh>
           {[-0.58, -0.29, 0, 0.29, 0.58].map((x, index) => <mesh key={x} position={[x, 0.62, 0.61]} rotation={[0.5, 0, 0]}><boxGeometry args={[0.28, 0.04, 0.34]} /><meshStandardMaterial color={index % 2 === 0 ? '#d9362b' : '#f8fafc'} /></mesh>)}
           {/* Fresh pizzas on the counter: crust, sauce, cheese, and pepperoni. */}
-          {[[-0.16, 0.39], [0.25, 0.42]].map(([x, y], pizzaIndex) => <group key={`counter-pizza-${pizzaIndex}`} position={[x, y, 0.72]} rotation={[-Math.PI / 2, 0, pizzaIndex * 0.3]}><mesh><cylinderGeometry args={[0.13, 0.13, 0.025, 20]} /><meshStandardMaterial color="#d98a3c" roughness={0.8} /></mesh><mesh position={[0, 0.016, 0]}><cylinderGeometry args={[0.105, 0.105, 0.008, 20]} /><meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={0.15} /></mesh>{[[0.04, 0.03], [-0.04, 0.02], [0, -0.045]].map(([px, pz], index) => <mesh key={index} position={[px, 0.026, pz]}><sphereGeometry args={[0.018, 8, 8]} /><meshStandardMaterial color="#b91c1c" /></mesh>)}</group>)}
-          <Text position={[0, 0.93, 0.51]} fontSize={0.22} color="#d9362b" anchorX="center" anchorY="middle" fontWeight="bold">Pizzeria</Text>
+          {[[-0.16, 0.39], [0.25, 0.42]].map(([x, y], pizzaIndex) => <group key={`counter-pizza-${pizzaIndex}`} position={[x, y, 0.72]} rotation={[-Math.PI / 2, 0, pizzaIndex * 0.3]}><mesh><cylinderGeometry args={[0.13, 0.13, 0.025, 20]} /><meshStandardMaterial color="#d98a3c" roughness={0.8} side={THREE.DoubleSide} /></mesh><mesh position={[0, 0.016, 0]}><cylinderGeometry args={[0.105, 0.105, 0.008, 20]} /><meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={0.15} side={THREE.DoubleSide} /></mesh>{[[0.04, 0.03], [-0.04, 0.02], [0, -0.045]].map(([px, pz], index) => <mesh key={index} position={[px, 0.026, pz]}><sphereGeometry args={[0.018, 8, 8]} /><meshStandardMaterial color="#b91c1c" side={THREE.DoubleSide} /></mesh>)}</group>)}
+          <Text position={[0, 0.93, 0.51]} fontSize={0.26} color="#fff176" outlineColor="#b91c1c" outlineWidth={0.018} anchorX="center" anchorY="middle" fontWeight="bold">Pizzeria</Text>
+          {/* Underside cheese/topping layer keeps pizzas readable from every angle. */}
+          {[-0.16, 0.25].map((x, i) => <group key={`pizza-under-${i}`} position={[x, i ? 0.394 : 0.364, 0.72]} rotation={[-Math.PI / 2, 0, i * 0.3]}><mesh><cylinderGeometry args={[0.105, 0.105, 0.008, 20]} /><meshStandardMaterial color="#fbbf24" side={THREE.DoubleSide} /></mesh>{[[0.04, 0.03], [-0.04, 0.02], [0, -0.045]].map(([px, pz], j) => <mesh key={j} position={[px, -0.01, pz]}><sphereGeometry args={[0.018, 8, 8]} /><meshStandardMaterial color="#b91c1c" /></mesh>)}</group>)}
           {/* Big rooftop pizza sign: golden crust, cheese, and pepperoni. */}
           <group position={[0, 1.13, 0.03]} rotation={[-Math.PI / 2, 0, 0]}>
             <mesh><cylinderGeometry args={[0.23, 0.23, 0.05, 24]} /><meshStandardMaterial color="#d78a3c" roughness={0.8} /></mesh>
             <mesh position={[0, 0.03, 0]}><cylinderGeometry args={[0.19, 0.19, 0.012, 24]} /><meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={0.18} /></mesh>
+            <mesh position={[0, -0.03, 0]}><cylinderGeometry args={[0.19, 0.19, 0.012, 24]} /><meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={0.12} side={THREE.DoubleSide} /></mesh>
+            {[[0.07, 0.05], [-0.07, 0.05], [0, -0.08], [0.1, -0.055], [-0.11, -0.035]].map(([x, z], index) => <mesh key={`pepperoni-under-${index}`} position={[x, -0.052, z]}><cylinderGeometry args={[0.032, 0.032, 0.012, 12]} /><meshStandardMaterial color="#b91c1c" /></mesh>)}
             {/* Four cut lines make eight visible pizza slices. */}
             {[0, Math.PI / 4, Math.PI / 2, Math.PI * 0.75].map((angle) => <mesh key={angle} position={[0, 0.049, 0]} rotation={[0, angle, 0]}><boxGeometry args={[0.37, 0.011, 0.011]} /><meshStandardMaterial color="#c67a2b" roughness={0.86} /></mesh>)}
             {[[0.07, 0.05], [-0.07, 0.05], [0, -0.08], [0.1, -0.055], [-0.11, -0.035]].map(([x, z], index) => <mesh key={`pepperoni-${index}`} position={[x, 0.052, z]}><cylinderGeometry args={[0.032, 0.032, 0.012, 12]} /><meshStandardMaterial color="#b91c1c" roughness={0.7} /></mesh>)}

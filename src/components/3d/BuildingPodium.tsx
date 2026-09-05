@@ -159,7 +159,7 @@ export function BuildingPodium({
             fontWeight="bold"
             letterSpacing={0.16}
           >
-            UPSPACE TOWER
+            GET3DBILLBOARDS TOWER
           </Text>
 
           <Text
@@ -178,9 +178,9 @@ export function BuildingPodium({
 
       {/* 2B. STRUCTURAL BASE PILLARS WITH AD BILLBOARDS ON ALL 4 SIDES */}
       {[
-        { pos: [0, 0, depth / 2 + 0.75], rot: 0, brand: 'UpSpace', tag: 'CLAIM THE TOP FLOOR', leader: true },
+        { pos: [0, 0, depth / 2 + 0.75], rot: 0, brand: 'Get3DBillboards', tag: 'CLAIM YOUR 3D BILLBOARD', leader: true },
         { pos: [0, 0, -(depth / 2 + 0.55)], rot: Math.PI, brand: 'Floorverse', tag: 'OUTBID · STAND ABOVE', leader: false },
-        { pos: [-(width / 2 + 0.55), 0, 0], rot: -Math.PI / 2, brand: 'UpSpace', tag: 'YOUR BRAND UP HERE', leader: false },
+        { pos: [-(width / 2 + 0.55), 0, 0], rot: -Math.PI / 2, brand: 'Get3DBillboards', tag: 'YOUR BRAND UP HERE', leader: false },
         { pos: [width / 2 + 0.55, 0, 0], rot: Math.PI / 2, brand: 'Floorverse', tag: 'TOP SPACE FOR SALE', leader: false },
       ].map((side, i) => {
         const w = side.leader ? 4.2 : 3.2;

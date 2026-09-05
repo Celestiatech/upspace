@@ -23,7 +23,8 @@ export function HeightLadderMarkers({
   const scaleRatio = floorHeight / 4.5;
   const baseY = baseHeight * 1.4;
 
-  const rulerX = -6.8;
+  // Keep the ruler and its HTML cards within the closer terrace camera view.
+  const rulerX = -4.6;
   const rulerZ = 0;
 
   return (
@@ -39,7 +40,9 @@ export function HeightLadderMarkers({
         const markerY = baseY + ((landmark.heightMeters - 18 - 12) * scaleRatio);
 
         // Only display relevant landmarks near or up to the current building height range
-        if (markerY < 0 || markerY > roofY + 25) return null;
+        // Do not render milestone cards above the current terrace; this keeps
+        // the rooftop view clear and prevents cards floating beyond the tower.
+        if (markerY < 0 || markerY > roofY) return null;
 
         const isSurpassed = markerY <= roofY;
 
@@ -55,14 +58,14 @@ export function HeightLadderMarkers({
 
             {/* High-Fidelity 3D Landmark Photograph & Elevation Card */}
             <Html
-              position={[-0.1, 0, 0]}
+              position={[0.55, 0, 0]}
               center
-              distanceFactor={24}
+              distanceFactor={30}
               zIndexRange={[100, 0]}
               transform={false}
             >
               <div
-                className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-2xl shadow-xl backdrop-blur-xl border transition-all duration-300 pointer-events-none select-none whitespace-nowrap -translate-x-full ${
+                className={`flex scale-[0.45] origin-left items-center gap-1 px-1 py-0.5 rounded-lg shadow-xl backdrop-blur-xl border transition-all duration-300 pointer-events-none select-none whitespace-nowrap ${
                   isDayMode
                     ? 'bg-white/95 border-slate-300 shadow-slate-900/15 text-slate-950'
                     : 'bg-slate-950/90 border-white/15 shadow-black/60 text-white'
@@ -73,7 +76,7 @@ export function HeightLadderMarkers({
                 }`}
               >
                 {/* Real Landmark Photograph Thumbnail */}
-                <div className="relative w-8 h-8 rounded-xl overflow-hidden shrink-0 border border-black/10 dark:border-white/20 shadow-sm bg-slate-200">
+                <div className="relative w-5 h-5 rounded-md overflow-hidden shrink-0 border border-black/10 dark:border-white/20 shadow-sm bg-slate-200">
                   <img
                     src={landmark.imageUrl}
                     alt={landmark.name}

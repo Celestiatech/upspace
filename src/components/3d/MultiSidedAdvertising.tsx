@@ -187,8 +187,8 @@ export function MultiSidedAdvertising({
   const tickerTextRef = useRef<THREE.Group>(null);
 
   const isAvailable = floor.status === 'available';
-  const brandColor = isAvailable ? '#10b981' : (floor.bannerColor || '#38bdf8');
-  const activeColor = isSelected ? '#ffea00' : isHovered ? '#38bdf8' : brandColor;
+  const brandColor = isAvailable ? '#00e676' : (floor.bannerColor || '#00c8ff');
+  const activeColor = isSelected ? '#fff000' : isHovered ? '#00e5ff' : brandColor;
 
   // Determine advertising style based on floor data
   const styleType = floor.floorNumber % 3;

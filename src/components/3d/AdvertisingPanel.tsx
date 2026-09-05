@@ -204,8 +204,8 @@ export function AdvertisingPanel({
   const [bannerHover, setBannerHover] = useState(false);
 
   const isAvailable = floor.status === 'available';
-  const brandAccent = isAvailable ? '#10b981' : (floor.bannerColor || '#38bdf8');
-  const activeColor = isSelected ? '#ffea00' : isHovered ? '#38bdf8' : brandAccent;
+  const brandAccent = isAvailable ? '#00e676' : (floor.bannerColor || '#00c8ff');
+  const activeColor = isSelected ? '#fff000' : isHovered ? '#00e5ff' : brandAccent;
 
   const radius = width / 2;
   const signWidth = width * 0.85;

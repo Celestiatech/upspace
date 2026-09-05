@@ -132,7 +132,7 @@ export function HeadquartersGroundFloor({
             fontWeight="bold"
             letterSpacing={0.04}
           >
-            UpSpace
+            Get3DBillboards
           </Text>
         </group>
       </group>

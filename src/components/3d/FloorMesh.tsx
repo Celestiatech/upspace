@@ -61,8 +61,8 @@ export function FloorMesh({
   const [hovered, setHovered] = useState(false);
   const glowRingRef = useRef<THREE.Mesh>(null);
 
-  const brandColor = floor.status === 'available' ? '#10b981' : (floor.bannerColor || '#38bdf8');
-  const glowColor = isSelected ? '#ffea00' : hovered ? '#00f0ff' : brandColor;
+  const brandColor = floor.status === 'available' ? '#00e676' : (floor.bannerColor || '#00c8ff');
+  const glowColor = isSelected ? '#fff000' : hovered ? '#00e5ff' : brandColor;
 
   const slabThickness = 0.12;
 

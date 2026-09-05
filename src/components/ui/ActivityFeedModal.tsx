@@ -58,7 +58,7 @@ export function ActivityFeedModal({ theme, onClose }: ActivityFeedModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/65 backdrop-blur-md animate-in fade-in duration-200">
       <section
-        className={`w-full max-w-lg rounded-[1.8rem] sm:rounded-3xl p-4 sm:p-7 border shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[88vh] ${
+        className={`w-full max-w-2xl rounded-[1.8rem] sm:rounded-3xl p-3 sm:p-6 border shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[88vh] ${
           isDay
             ? 'bg-white border-slate-200 text-slate-900 shadow-slate-900/20'
             : 'bg-slate-950 border-white/15 text-white shadow-black/80'
@@ -82,7 +82,7 @@ export function ActivityFeedModal({ theme, onClose }: ActivityFeedModalProps) {
         </div>
 
         {/* FILTER PILLS */}
-        <div className="flex items-center gap-1.5 sm:gap-2 pt-3 pb-2.5 shrink-0 text-xs overflow-x-auto custom-scrollbar">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-2.5 pb-2 shrink-0 text-xs">
           <button
             onClick={() => setFilter('all')}
             className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-bold transition border whitespace-nowrap touch-manipulation ${

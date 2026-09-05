@@ -17,6 +17,7 @@ interface BuildingStructureProps {
   selectedFloor: FloorData | null;
   isDayMode?: boolean;
   explodeAmount?: number;
+  showRuler?: boolean;
   onSelectFloor: (floor: FloorData) => void;
   onHoverFloor?: (floor: FloorData | null) => void;
 }
@@ -27,6 +28,7 @@ export function BuildingStructure({
   selectedFloor,
   isDayMode = false,
   explodeAmount = 0,
+  showRuler = true,
   onSelectFloor,
   onHoverFloor,
 }: BuildingStructureProps) {
@@ -64,13 +66,15 @@ export function BuildingStructure({
       <PlazaLife theme={isDayMode ? 'day' : 'night'} gazeHeight={roofY} />
 
       {/* 2.5 WORLD LANDMARK 3D HEIGHT MARKERS & ELEVATION RULER */}
-      <HeightLadderMarkers
-        roofY={roofY}
-        floorsCount={floors.length}
-        floorHeight={floorHeight}
-        baseHeight={baseHeight}
-        isDayMode={isDayMode}
-      />
+      {showRuler && (
+        <HeightLadderMarkers
+          roofY={roofY}
+          floorsCount={floors.length}
+          floorHeight={floorHeight}
+          baseHeight={baseHeight}
+          isDayMode={isDayMode}
+        />
+      )}
 
       {/* 2. GRAND HEADQUARTERS GROUND FLOOR - tall, imposing high-rise base */}
       <HeadquartersGroundFloor
