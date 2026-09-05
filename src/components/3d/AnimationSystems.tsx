@@ -1,6 +1,6 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 
 export type AnimationUpdater = (time: number, delta: number) => void;
 
@@ -14,10 +14,19 @@ export function registerAnimation(set: Set<AnimationUpdater>, updater: Animation
 }
 
 function SharedAnimationSystem({ updaters }: { updaters: Set<AnimationUpdater> }) {
+  const invalidate = useThree((state) => state.invalidate);
+
   useFrame((state, delta) => {
     if (updaters.size === 0) return;
     const time = state.clock.getElapsedTime();
     updaters.forEach((update) => update(time, delta));
+
+    // Demand rendering normally settles after interaction. These systems own
+    // visible looping animations, so keep the next frame scheduled while the
+    // document is visible; hidden tabs naturally stop receiving frames.
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+      invalidate();
+    }
   });
   return null;
 }
