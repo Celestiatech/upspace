@@ -144,8 +144,9 @@ export function Airplane({ theme, floors = [], altitude }: AirplaneProps) {
         const wave = Math.sin(t * 9 - progress * 9) * 0.55 * Math.max(0.08, progress);
         posAttr.setZ(i, wave);
       }
+      // The banner deformation changes vertex positions only. Keep the initial
+      // normals; rebuilding the full normal buffer every frame was a major CPU cost.
       posAttr.needsUpdate = true;
-      geo.computeVertexNormals();
     }
   });
 
@@ -450,4 +451,3 @@ export function Airplane({ theme, floors = [], altitude }: AirplaneProps) {
     </group>
   );
 }
-

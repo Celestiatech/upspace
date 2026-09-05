@@ -10,6 +10,7 @@ import { Arena } from '@/types/arena';
 import { FloorData } from '@/types/floor';
 import { BuildingViewer } from './BuildingViewer';
 import { ThemeMode } from '@/types/theme';
+import { CityAnimationSystem, PlazaAnimationSystem, FloorAnimationSystem } from './AnimationSystems';
 
 interface ArenaSceneProps {
   arena: Arena;
@@ -154,6 +155,9 @@ export function ArenaScene({
 
   return (
     <>
+      <CityAnimationSystem />
+      <PlazaAnimationSystem />
+      <FloorAnimationSystem />
       {/* 1. PHOTOREALISTIC ARCHITECTURAL SKY & ENVIRONMENT REFLECTION (Requirement #5) */}
       <Environment
         preset={isDayMode ? 'city' : 'night'}

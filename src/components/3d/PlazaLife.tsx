@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
 import { ThemeMode } from '@/types/theme';
 import { RealisticHuman } from './RealisticHuman';
+import { plazaAnimationUpdaters, registerAnimation } from './AnimationSystems';
 
 interface PlazaLifeProps {
   theme: ThemeMode;
@@ -27,11 +27,10 @@ function TowerWatcher({
   // Keep every visitor outside the podium and glass facade.
   const startingRadius = Math.max(Math.hypot(x, z), 14);
 
-  useFrame((state) => {
+  useEffect(() => registerAnimation(plazaAnimationUpdaters, (time) => {
     const visitor = visitorRef.current;
     if (!visitor) return;
 
-    const time = state.clock.getElapsedTime();
     // Short, gentle paths keep visitors alive while they remain focused on the tower.
     const angle = startingAngle + Math.sin(time * 0.32 + index * 1.7) * 0.055;
     const radius = startingRadius + Math.sin(time * 0.7 + index) * 0.22;
@@ -40,9 +39,9 @@ function TowerWatcher({
       0.08 + Math.abs(Math.sin(time * 1.4 + index)) * 0.025,
       Math.sin(angle) * radius
     );
-    // Face the tower horizontally; the head is tilted upward separately.
-    visitor.lookAt(0, visitor.position.y, 0);
-  });
+    // Face the tower horizontally; avoid allocating a target vector/lookAt matrix each frame.
+    visitor.rotation.y = angle - Math.PI / 2;
+  }), [startingAngle, startingRadius, index]);
 
   return <group ref={visitorRef}>{children}</group>;
 }

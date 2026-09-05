@@ -2,8 +2,8 @@
 
 import React, { useRef, useMemo, useEffect } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
 import { FloorData, getDisplayFloorNumber } from '@/types/floor';
+import { floorAnimationUpdaters, registerAnimation } from './AnimationSystems';
 
 const SIDE_PILL_BG = ['#22c9b8', '#7cc0f2', '#a8e063', '#ff9b7d', '#8fbfe0', '#ffd580'];
 
@@ -213,8 +213,7 @@ export function MultiSidedAdvertising({
   const signHeight = height * 0.78;
 
   // Subtle scrolling ticker animation for 360 ribbon
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
+  useEffect(() => registerAnimation(floorAnimationUpdaters, (t) => {
     if (tickerTextRef.current) {
       tickerTextRef.current.position.x = -((t * 0.4) % 4);
     }
@@ -224,7 +223,7 @@ export function MultiSidedAdvertising({
         mat.emissiveIntensity = isSelected ? 2.5 : isHovered ? 1.8 : isDayMode ? 0.65 : 0.9;
       }
     }
-  });
+  }), [isSelected, isHovered, isDayMode]);
 
   return (
     !hideAdvertising && (

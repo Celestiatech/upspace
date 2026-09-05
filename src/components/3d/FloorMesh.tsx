@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
 import { FloorData } from '@/types/floor';
 import { AdvertisingPanel } from './AdvertisingPanel';
 import { FloorFacade } from './FloorFacade';
+import { floorAnimationUpdaters, registerAnimation } from './AnimationSystems';
 
 interface FloorMeshProps {
   floor: FloorData;
@@ -84,12 +84,12 @@ export function FloorMesh({
   // When another floor is selected, dim unselected floors slightly for cinematic focus (Requirement #6)
   const isDimmed = hasSelection && !isSelected;
 
-  useFrame((state) => {
+  useEffect(() => registerAnimation(floorAnimationUpdaters, (time) => {
     if (glowRingRef.current) {
       const mat = glowRingRef.current.material as THREE.MeshStandardMaterial;
       if (mat) {
         if (isSelected) {
-          mat.emissiveIntensity = 2.6 + Math.sin(state.clock.getElapsedTime() * 4) * 0.4;
+          mat.emissiveIntensity = 2.6 + Math.sin(time * 4) * 0.4;
         } else if (hovered) {
           mat.emissiveIntensity = 1.8;
         } else {
@@ -97,7 +97,7 @@ export function FloorMesh({
         }
       }
     }
-  });
+  }), [isSelected, hovered, isDimmed, isDayMode]);
 
   const handleClick = (e: any) => {
     e.stopPropagation();

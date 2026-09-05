@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { cityAnimationUpdaters, registerAnimation } from './AnimationSystems';
 import { ThemeMode } from '@/types/theme';
 
 interface CityEnvironmentProps {
@@ -12,12 +12,12 @@ interface CityEnvironmentProps {
 function MovingRoadCar({ color, index }: { color: string; index: number }) {
   const carRef = useRef<THREE.Group>(null);
 
-  useFrame((state) => {
+  useEffect(() => registerAnimation(cityAnimationUpdaters, (time) => {
     const car = carRef.current;
     if (!car) return;
 
     const route = index % 4;
-    const distance = (state.clock.getElapsedTime() * 6 + index * 18) % 152;
+    const distance = (time * 6 + index * 18) % 152;
     const start = 27;
 
     // Cars keep a fixed heading and drive in straight lines on the four boulevards.
@@ -34,7 +34,7 @@ function MovingRoadCar({ color, index }: { color: string; index: number }) {
       car.position.set(1.5, 0.28, -start - distance);
       car.rotation.y = -Math.PI / 2;
     }
-  });
+  }), [index]);
 
   return (
     <group ref={carRef}>

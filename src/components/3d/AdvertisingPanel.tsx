@@ -2,8 +2,8 @@
 
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
 import { FloorData, getDisplayFloorNumber } from '@/types/floor';
+import { floorAnimationUpdaters, registerAnimation } from './AnimationSystems';
 
 interface AdvertisingPanelProps {
   floor: FloorData;
@@ -228,8 +228,7 @@ export function AdvertisingPanel({
 
   // Emissive backlight + pop-out animation (mutates mesh transform directly, no React re-render)
   const popRef = useRef(0);
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
+  useEffect(() => registerAnimation(floorAnimationUpdaters, (t) => {
     const hov = hoverRef.current;
     if (backlightRef.current) {
       const mat = backlightRef.current.material as THREE.MeshStandardMaterial;
@@ -244,7 +243,7 @@ export function AdvertisingPanel({
     if (groupRef.current) {
       groupRef.current.position.z = radius + 0.05 + popRef.current * 0.12;
     }
-  });
+  }), [isSelected, isDayMode, radius]);
 
   const handleAdClick = (event: any) => {
     if (!floor.targetUrl) return;
