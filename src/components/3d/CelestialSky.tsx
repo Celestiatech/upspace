@@ -12,9 +12,10 @@ interface CelestialSkyProps {
   theme: ThemeMode;
   floors?: FloorData[];
   altitude?: number;
+  lowPower?: boolean;
 }
 
-export function CelestialSky({ theme, floors = [], altitude }: CelestialSkyProps) {
+export function CelestialSky({ theme, floors = [], altitude, lowPower = false }: CelestialSkyProps) {
   const isDay = theme === 'day';
 
 
@@ -95,7 +96,7 @@ export function CelestialSky({ theme, floors = [], altitude }: CelestialSkyProps
         <Stars
           radius={130}
           depth={60}
-          count={5000}
+          count={lowPower ? 900 : 5000}
           factor={5}
           saturation={1}
           fade

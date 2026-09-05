@@ -14,6 +14,7 @@ interface BuildingViewerProps {
   showRuler?: boolean;
   onSelectFloor: (floor: FloorData) => void;
   onHoverFloor?: (floor: FloorData | null) => void;
+  lowPower?: boolean;
 }
 
 export function BuildingViewer({
@@ -25,6 +26,7 @@ export function BuildingViewer({
   showRuler = true,
   onSelectFloor,
   onHoverFloor,
+  lowPower = false,
 }: BuildingViewerProps) {
   return (
     <BuildingStructure
@@ -36,6 +38,7 @@ export function BuildingViewer({
       showRuler={showRuler}
       onSelectFloor={onSelectFloor}
       onHoverFloor={onHoverFloor}
+      lowPower={lowPower}
     />
   );
 }

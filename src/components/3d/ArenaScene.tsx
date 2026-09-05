@@ -225,7 +225,7 @@ export function ArenaScene({
       />
 
       {/* 3. 3D BUILDING & SURROUNDING URBAN ENVIRONMENT */}
-      <BuildingViewer
+        <BuildingViewer
         arena={arena}
         floors={floors}
         selectedFloor={selectedFloor}
@@ -233,8 +233,9 @@ export function ArenaScene({
         explodeAmount={explodeAmount}
         showRuler={showRuler}
         onSelectFloor={onSelectFloor}
-        onHoverFloor={onHoverFloor}
-      />
+          onHoverFloor={onHoverFloor}
+          lowPower={lowPower}
+        />
     </>
   );
 }

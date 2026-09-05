@@ -20,6 +20,7 @@ interface BuildingStructureProps {
   showRuler?: boolean;
   onSelectFloor: (floor: FloorData) => void;
   onHoverFloor?: (floor: FloorData | null) => void;
+  lowPower?: boolean;
 }
 
 export function BuildingStructure({
@@ -31,6 +32,7 @@ export function BuildingStructure({
   showRuler = true,
   onSelectFloor,
   onHoverFloor,
+  lowPower = false,
 }: BuildingStructureProps) {
   const {
     floorHeight,
@@ -57,7 +59,7 @@ export function BuildingStructure({
   return (
     <group position={[0, 0, 0]}>
       {/* 1. CELESTIAL BACKGROUND: SUN, MOON WITH CRATERS, AIRPLANE WITH TOP BRAND BANNER, DRIFTING CLOUDS */}
-      <CelestialSky theme={isDayMode ? 'day' : 'night'} floors={floors} altitude={roofY} />
+      <CelestialSky theme={isDayMode ? 'day' : 'night'} floors={floors} altitude={roofY} lowPower={lowPower} />
 
 
 
