@@ -139,7 +139,8 @@ export const useAppStore = create<AppState>()(
 
       // Theme & Camera UI Settings
       theme: 'day',
-      autoRotate: true,
+      // Keep the scene idle until the visitor explicitly enables rotation.
+      autoRotate: false,
       zenMode: false,
       // Keep the complete scene available while making the default experience
       // comfortable on integrated graphics and lower-spec devices.
@@ -157,13 +158,14 @@ export const useAppStore = create<AppState>()(
       name: 'upspace-app-storage', // key in localStorage
       // Bump this when changing graphics defaults so existing visitors also
       // receive the fan-friendly low-power setting once.
-      version: 6,
+      version: 7,
       migrate: (persistedState: unknown) => {
         const saved = persistedState as Partial<AppState>;
         return {
           ...saved,
           floors: Array.isArray(saved?.floors) ? saved.floors : [],
           theme: 'day',
+          autoRotate: false,
           lowPower: true,
           penthouseMusic: false,
         };
