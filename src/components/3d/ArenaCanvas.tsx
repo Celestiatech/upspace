@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { Sky } from '@react-three/drei';
 import * as THREE from 'three';
 import { Arena } from '@/types/arena';
@@ -19,6 +19,20 @@ interface ArenaCanvasProps {
   onSelectFloor: (floor: FloorData) => void;
   onHoverFloor?: (floor: FloorData | null) => void;
   resetCameraTrigger?: number;
+}
+
+function RenderScheduler({ enabled }: { enabled: boolean }) {
+  const invalidate = useThree((state) => state.invalidate);
+
+  useEffect(() => {
+    if (!enabled) return;
+    invalidate();
+    // Render at 30 FPS instead of an unrestricted 60+ FPS loop.
+    const timer = window.setInterval(invalidate, 1000 / 30);
+    return () => window.clearInterval(timer);
+  }, [enabled, invalidate]);
+
+  return null;
 }
 
 export function ArenaCanvas({
@@ -48,7 +62,7 @@ export function ArenaCanvas({
   return (
     <div className="relative w-full h-full select-none">
       <Canvas
-        frameloop={pageVisible ? 'always' : 'never'}
+        frameloop="demand"
         // Adaptive performance prevents frame dips while keeping rendering sharp
         performance={{ min: 0.75, max: 1, debounce: 200 }}
         shadows={!lowPower}
@@ -75,6 +89,7 @@ export function ArenaCanvas({
         <color attach="background" args={[bgColor]} />
         <fog attach="fog" args={[bgColor, 60, isDayMode ? 220 : 160]} />
         {!lowPower && <Sky sunPosition={[100, 20, 100]} turbidity={8} rayleigh={6} mieCoefficient={0.005} />}
+        <RenderScheduler enabled={pageVisible} />
 
         <Suspense fallback={null}>
           <ArenaScene
